@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: taskuser
+      POSTGRES_PASSWORD: taskpwd
+      POSTGRES_DB: postgres
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskuser"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build: { context: ., dockerfile: services/AuthService/AuthService/Dockerfile }
+    ports: ["5001:5001"]
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=authdb;Username=taskuser;Password=taskpwd"
+      ASPNETCORE_URLS: "http://+:5001"
+    depends_on: { postgres: { condition: service_healthy } }
+
+  project-service:
+    build: { context: ., dockerfile: services/ProjectService/ProjectService/Dockerfile }
+    ports: ["5002:5002"]
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=projectdb;Username=taskuser;Password=taskpwd"
+      ASPNETCORE_URLS: "http://+:5002"
+    depends_on: { postgres: { condition: service_healthy } }
+
+  task-service:
+    build: { context: ., dockerfile: services/TaskService/TaskService/Dockerfile }
+    ports: ["5003:5003"]
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=taskdb;Username=taskuser;Password=taskpwd"
+      ASPNETCORE_URLS: "http://+:5003"
+    depends_on: { postgres: { condition: service_healthy } }
+
+  gateway:
+    build: { context: ., dockerfile: services/ApiGateway/ApiGateway/Dockerfile }
+    ports: ["5010:5000"]
+    depends_on: [auth-service, project-service, task-service]
+
+volumes:
+  pgdata:
