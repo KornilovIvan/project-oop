@@ -23,12 +23,13 @@ namespace TaskManagement.Application.Services
             if (existing is not null)
                 throw new System.Exception("User with this email already exists");
 
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
             var user = new User
             {
                 Username = username,
                 Email = email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-                Role = role.ToString()
+                PasswordHash = hashedPassword,
+                Role = role
             };
 
             _db.Users.Add(user);
