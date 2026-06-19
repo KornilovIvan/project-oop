@@ -1,36 +1,19 @@
-using System.Text;
-using System.Text.Json;
-
-var builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls("http://+:5000");
-builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
-var app = builder.Build();
+using Grpc.Net.Client;
+using TaskManagement.Grpc;
+var b=WebApplication.CreateBuilder(args);
+b.WebHost.UseUrls("http://+:5000");
+b.Services.AddCors(o=>o.AddDefaultPolicy(p=>p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+var app=b.Build();
 app.UseCors();
-
-var http = new HttpClient();
-
-async Task<IResult> Proxy(string url, HttpRequest incoming)
-{
-    using var reader = new StreamReader(incoming.Body);
-    var body = await reader.ReadToEndAsync();
-    var resp = await http.PostAsync(url, new StringContent(body, Encoding.UTF8, "application/json"));
-    var respBody = await resp.Content.ReadAsStringAsync();
-    return resp.IsSuccessStatusCode ? Results.Content(respBody, "application/json") : Results.Problem(respBody, statusCode: (int)resp.StatusCode);
-}
-
-async Task<IResult> ProxyGet(string url)
-{
-    var resp = await http.GetAsync(url);
-    var respBody = await resp.Content.ReadAsStringAsync();
-    return resp.IsSuccessStatusCode ? Results.Content(respBody, "application/json") : Results.Problem(respBody, statusCode: (int)resp.StatusCode);
-}
-
-app.MapPost("/api/auth/register", (HttpRequest r) => Proxy("http://auth-service:5001/api/auth/register", r));
-app.MapPost("/api/auth/login", (HttpRequest r) => Proxy("http://auth-service:5001/api/auth/login", r));
-app.MapGet("/api/projects", () => ProxyGet("http://project-service:5002/api/projects"));
-app.MapPost("/api/projects", (HttpRequest r) => Proxy("http://project-service:5002/api/projects", r));
-app.MapGet("/api/projects/{pid}/tasks", (int pid) => ProxyGet($"http://task-service:5003/api/projects/{pid}/tasks"));
-app.MapPost("/api/tasks", (HttpRequest r) => Proxy("http://task-service:5003/api/tasks", r));
-app.MapPost("/api/tasks/{tid}/status", (int tid, HttpRequest r) => Proxy($"http://task-service:5003/api/tasks/{tid}/status", r));
-app.MapGet("/health", () => "OK");
+var auth=new AuthService.AuthServiceClient(GrpcChannel.ForAddress("http://auth-service:5001"));
+var proj=new ProjectService.ProjectServiceClient(GrpcChannel.ForAddress("http://project-service:5002"));
+var task=new TaskService.TaskServiceClient(GrpcChannel.ForAddress("http://task-service:5003"));
+app.MapPost("/api/auth/register",async(RegisterRequest r)=>Results.Ok(await auth.RegisterAsync(r)));
+app.MapPost("/api/auth/login",async(LoginRequest r)=>Results.Ok(await auth.LoginAsync(r)));
+app.MapGet("/api/projects",async()=>Results.Ok((await proj.ListProjectsAsync(new())).Projects));
+app.MapPost("/api/projects",async(CreateProjectRequest r)=>Results.Ok(await proj.CreateProjectAsync(r)));
+app.MapGet("/api/projects/{pid}/tasks",async(int pid)=>Results.Ok((await task.ListTasksAsync(new(){ProjectId=pid})).Tasks));
+app.MapPost("/api/tasks",async(CreateTaskRequest r)=>Results.Ok(await task.CreateTaskAsync(r)));
+app.MapPost("/api/tasks/{tid}/status",async(int tid,ChangeTaskStatusRequest r)=>{r.TaskId=tid;return Results.Ok(await task.ChangeStatusAsync(r));});
+app.MapGet("/health",()=>"OK");
 app.Run();

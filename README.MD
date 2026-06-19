@@ -1,26 +1,30 @@
 # Task Management — Microservices
 
-Микросервисное приложение: REST API + React + PostgreSQL в Docker.
+Микросервисы на gRPC + React + PostgreSQL в Docker.
 
 ## Архитектура
 
 ```
-Frontend (:5173) → REST → Gateway (:5010) → REST → AuthService (:5001)
-                                                   → ProjectService (:5002)
-                                                   → TaskService (:5003)
-                    PostgreSQL (3 БД: authdb, projectdb, taskdb)
+Frontend → REST → Gateway (:5010) → gRPC → AuthService (:5001)
+                                            → ProjectService (:5002)
+                                            → TaskService (:5003)
+                   PostgreSQL — authdb, projectdb, taskdb
 ```
 
-## Запуск
+## Быстрый старт
 
 ```bash
-# 1. Запустить все сервисы + PostgreSQL
+# 1. Полная очистка
+docker compose down -v 2>/dev/null
+docker stop taskpg taskpostgres 2>/dev/null; docker rm taskpg taskpostgres 2>/dev/null
+pkill -f "dotnet" 2>/dev/null
+pkill -f "vite" 2>/dev/null
+
+# 2. Запуск
 docker compose up -d --build
 
-# 2. Фронтенд
-cd frontend
-npm install
-cd frontend && npm run dev
+# 3. Фронтенд
+cd frontend && npm install && npm run dev
 ```
 
 **Фронтенд:** http://localhost:5173
@@ -28,36 +32,31 @@ cd frontend && npm run dev
 ## Остановка
 
 ```bash
-docker compose down       # остановить контейнеры
-docker compose down -v    # + удалить БД
-pkill -f "vite"            # остановить фронтенд
+docker compose down
+pkill -f "vite" 2>/dev/null
 ```
+
+## Почему gRPC не работал раньше?
+
+**Проблема:** gRPC требует HTTP/2. На macOS Kestrel не поддерживает HTTP/2 без TLS (шифрования). В Docker (Linux-контейнеры) HTTP/2 без TLS работает.
+
+**Решение:** Все сервисы запускаются в Docker-контейнерах Linux с `ConfigureEndpointDefaults(HttpProtocols.Http2)`. Gateway общается с ними по чистому gRPC (не gRPC-Web).
+
+**Локально на macOS** gRPC будет работать только через `https://` с dev-сертификатом.
 
 ## Сервисы
 
-| Сервис | Порт | База | API |
-|--------|------|------|-----|
-| **AuthService** | 5001 | authdb | `POST /api/auth/register`, `POST /api/auth/login` |
-| **ProjectService** | 5002 | projectdb | `GET /api/projects`, `POST /api/projects` |
-| **TaskService** | 5003 | taskdb | `GET /api/projects/{id}/tasks`, `POST /api/tasks`, `POST /api/tasks/{id}/status` |
-| **ApiGateway** | 5010 | — | Проксирует все запросы на сервисы |
+| Сервис | Внутренний порт | Внешний порт | База |
+|--------|----------------|-------------|------|
+| **AuthService** | 5001 | 5001 | authdb |
+| **ProjectService** | 5002 | 5002 | projectdb |
+| **TaskService** | 5003 | 5003 | taskdb |
+| **ApiGateway** | 5000 | 5010 | — |
 
-## Структура
+## Проверка
 
+```bash
+curl -X POST http://localhost:5010/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","email":"test@test.com","password":"123456","role":3}'
 ```
-services/
-├── AuthService/          # Аутентификация и пользователи
-├── ProjectService/       # Проекты
-├── TaskService/          # Задачи и статусы
-└── ApiGateway/           # REST прокси (единая точка входа)
-frontend/                 # React + TypeScript (Vite)
-Proto/                    # gRPC контракты (для будущей сервис-сервис интеграции)
-postgres/init.sql         # Инициализация 3 БД
-docker-compose.yml        # Оркестрация
-```
-
-## Технологии
-
-- **Backend:** .NET 9, ASP.NET Core, PostgreSQL, Entity Framework Core, BCrypt
-- **Frontend:** React, TypeScript, Vite
-- **Infra:** Docker, Docker Compose, PostgreSQL 15
