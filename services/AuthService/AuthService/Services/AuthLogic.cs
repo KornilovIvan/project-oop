@@ -1,0 +1,85 @@
+using AuthService.Data;
+using AuthService.Models;
+using Grpc.Core;
+using Microsoft.EntityFrameworkCore;
+using System.Net.Mail;
+
+namespace AuthService.Services;
+
+public class AuthLogic(AuthDbContext database)
+{
+    public async Task<User> Register(
+        string username,
+        string email,
+        string password,
+        UserRole role,
+        CancellationToken cancellationToken)
+    {
+        username = username.Trim();
+        email = email.Trim();
+
+        ValidateRegistration(username, email, password, role);
+
+        var normalizedUsername = username.ToUpperInvariant();
+        var normalizedEmail = email.ToUpperInvariant();
+
+        if (await database.Users.AnyAsync(
+                user => user.NormalizedEmail == normalizedEmail ||
+                        user.NormalizedUsername == normalizedUsername,
+                cancellationToken))
+        {
+            throw new RpcException(new Status(
+                StatusCode.AlreadyExists,
+                "Email or username already exists"));
+        }
+
+        var user = new User
+        {
+            Username = username,
+            NormalizedUsername = normalizedUsername,
+            Email = email.ToLowerInvariant(),
+            NormalizedEmail = normalizedEmail,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            Role = role
+        };
+
+        database.Users.Add(user);
+        await database.SaveChangesAsync(cancellationToken);
+        return user;
+    }
+
+    public async Task<User> Login(string email, string password, CancellationToken cancellationToken)
+    {
+        var normalizedEmail = email.Trim().ToUpperInvariant();
+        var user = await database.Users.FirstOrDefaultAsync(
+            candidate => candidate.NormalizedEmail == normalizedEmail,
+            cancellationToken);
+
+        if (user is null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+        {
+            throw new RpcException(new Status(StatusCode.Unauthenticated, "Invalid email or password"));
+        }
+
+        return user;
+    }
+
+    private static void ValidateRegistration(string username, string email, string password, UserRole role)
+    {
+        if (username.Length is < 3 or > 100)
+            throw InvalidArgument("Username must contain from 3 to 100 characters");
+
+        if (!MailAddress.TryCreate(email, out _) || email.Length > 320)
+            throw InvalidArgument("Email is invalid");
+
+        if (password.Length < 6)
+            throw InvalidArgument("Password must contain at least 6 characters");
+
+        if (role is not UserRole.Executor and not UserRole.Observer)
+            throw new RpcException(new Status(
+                StatusCode.PermissionDenied,
+                "Only Executor or Observer can be selected during registration"));
+    }
+
+    private static RpcException InvalidArgument(string message) =>
+        new(new Status(StatusCode.InvalidArgument, message));
+}

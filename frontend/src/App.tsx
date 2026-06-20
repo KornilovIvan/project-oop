@@ -2,6 +2,7 @@ import { useState } from "react";
 import { LoginPage } from "./LoginPage";
 import { ProjectsPage } from "./ProjectsPage";
 import { TasksPage } from "./TasksPage";
+import { setAccessToken } from "./api";
 
 type Page =
   | { name: "login" }
@@ -43,7 +44,10 @@ function App() {
       onSelectProject={(projectId) =>
         setPage({ name: "tasks", projectId, userId: page.userId })
       }
-      onLogout={() => setPage({ name: "login" })}
+      onLogout={() => {
+        setAccessToken(null);
+        setPage({ name: "login" });
+      }}
     />
   );
 }

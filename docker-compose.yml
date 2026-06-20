@@ -5,7 +5,7 @@ services:
       POSTGRES_USER: taskuser
       POSTGRES_PASSWORD: taskpwd
       POSTGRES_DB: postgres
-    ports: ["5432:5432"]
+    ports: ["5433:5432"]
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -21,6 +21,10 @@ services:
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=authdb;Username=taskuser;Password=taskpwd"
       ASPNETCORE_URLS: "http://+:5001"
+      Jwt__Key: "local-development-key-change-before-production-2026"
+      Jwt__Issuer: "TaskManagement.AuthService"
+      Jwt__Audience: "TaskManagement.Api"
+      Jwt__LifetimeMinutes: "60"
     depends_on: { postgres: { condition: service_healthy } }
 
   project-service:
@@ -42,6 +46,10 @@ services:
   gateway:
     build: { context: ., dockerfile: services/ApiGateway/ApiGateway/Dockerfile }
     ports: ["5010:5000"]
+    environment:
+      Jwt__Key: "local-development-key-change-before-production-2026"
+      Jwt__Issuer: "TaskManagement.AuthService"
+      Jwt__Audience: "TaskManagement.Api"
     depends_on: [auth-service, project-service, task-service]
 
 volumes:
