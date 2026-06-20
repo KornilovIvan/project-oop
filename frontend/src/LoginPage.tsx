@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { authApi } from "./api";
+import { authApi, setAccessToken } from "./api";
 
 interface Props {
   onLogin: (userId: number, username: string) => void;
@@ -15,7 +15,8 @@ export function LoginPage({ onLogin }: Props) {
   const handleLogin = async () => {
     try {
       setError("");
-      const { user } = await authApi.login({ email, password });
+      const { token, user } = await authApi.login({ email, password });
+      setAccessToken(token);
       onLogin(user.id, user.username);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Login failed");
@@ -25,7 +26,9 @@ export function LoginPage({ onLogin }: Props) {
   const handleRegister = async () => {
     try {
       setError("");
-      const user = await authApi.register({ username, email, password, role: 3 });
+      await authApi.register({ username, email, password, role: 3 });
+      const { token, user } = await authApi.login({ email, password });
+      setAccessToken(token);
       onLogin(user.id, user.username);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Registration failed");

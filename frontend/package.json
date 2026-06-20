@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run proto && tsc -b && vite build",
+    "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "proto": "protoc --ts_out src/gen --plugin protoc-gen-ts=./node_modules/@protobuf-ts/plugin/bin/protoc-gen-ts --proto_path ../Proto/TaskManagement ../Proto/TaskManagement/TaskManagement.proto"

@@ -1,14 +1,24 @@
 const BASE = "http://localhost:5010/api";
 
+export function setAccessToken(token: string | null) {
+  if (token) localStorage.setItem("accessToken", token);
+  else localStorage.removeItem("accessToken");
+}
+
 async function req<T>(url: string, body?: unknown): Promise<T> {
   const r = await fetch(BASE + url, {
     method: body ? "POST" : "GET",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers: {
+      ...(body ? { "Content-Type": "application/json" } : {}),
+      ...(localStorage.getItem("accessToken")
+        ? { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
+        : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
   if (!r.ok) {
-    const text = await r.text();
-    throw new Error(text || r.statusText);
+    const response = await r.json().catch(() => null) as { error?: string } | null;
+    throw new Error(response?.error || r.statusText);
   }
   return r.json();
 }
