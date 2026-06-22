@@ -89,6 +89,39 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
   overflow: hidden;
 }
 
+/* Micro-animations */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.modal-overlay {
+  animation: fadeIn 0.12s ease;
+}
+
+.modal-content {
+  animation: scaleIn 0.15s ease;
+}
+
+@keyframes slideLeft {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.back-btn {
+  animation: slideLeft 0.2s ease;
+}
+
 /* Task cards */
 .keycap-card {
   padding: 10px;

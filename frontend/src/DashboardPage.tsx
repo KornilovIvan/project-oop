@@ -21,22 +21,24 @@ const priorityLabels: Record<number, string> = { 1: "Low", 2: "Medium", 3: "High
 const priorityColors: Record<number, string> = { 1: "#d4d4d4", 2: "#c0c0c0", 3: "#a8a8a8", 4: "#888888" };
 
 const projectPalette = [
-  { bg: "#f5ecec", border: "#dbb5b5", text: "#a07070" },   // muted pink
-  { bg: "#ecf0f5", border: "#b5c8db", text: "#7088a0" },   // muted blue
-  { bg: "#f5f0ec", border: "#dbc9b5", text: "#a08870" },   // muted tan
-  { bg: "#eef5ec", border: "#bcdbb5", text: "#78a070" },   // muted green
-  { bg: "#f5ecf3", border: "#dbb5cf", text: "#a07090" },   // muted purple
-  { bg: "#ecf5f5", border: "#b5d4db", text: "#7098a0" },   // muted teal
-  { bg: "#f5f0ec", border: "#dbceb5", text: "#a09070" },   // muted gold
-  { bg: "#f2ecf5", border: "#c8b5db", text: "#8070a0" },   // muted violet
-  { bg: "#f5ecec", border: "#dbbfc5", text: "#a07880" },   // muted rose
-  { bg: "#ecf5f0", border: "#b5dbc8", text: "#70a088" },   // muted sage
+  { bg: "#f5ecec", border: "#dbb5b5", text: "#a07070" },
+  { bg: "#ecf0f5", border: "#b5c8db", text: "#7088a0" },
+  { bg: "#f5f0ec", border: "#dbc9b5", text: "#a08870" },
+  { bg: "#eef5ec", border: "#bcdbb5", text: "#78a070" },
+  { bg: "#f5ecf3", border: "#dbb5cf", text: "#a07090" },
+  { bg: "#ecf5f5", border: "#b5d4db", text: "#7098a0" },
+  { bg: "#f5f0ec", border: "#dbceb5", text: "#a09070" },
+  { bg: "#f2ecf5", border: "#c8b5db", text: "#8070a0" },
+  { bg: "#f5ecec", border: "#dbbfc5", text: "#a07880" },
+  { bg: "#ecf5f0", border: "#b5dbc8", text: "#70a088" },
 ];
 
 export function DashboardPage({ userId, onSelectProject, onProjects, onProfile, onLogout }: Props) {
   const [tasks, setTasks] = useState<TaskWithProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(new Set());
+  const [statusError, setStatusError] = useState("");
 
   const toggleTask = (id: number) => {
     setExpandedTasks(prev => {
@@ -45,7 +47,14 @@ export function DashboardPage({ userId, onSelectProject, onProjects, onProfile, 
       return next;
     });
   };
-  const [statusError, setStatusError] = useState("");
+
+  const toggleProject = (name: string) => {
+    setCollapsedProjects(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  };
 
   const load = async () => {
     setLoading(true);
@@ -85,7 +94,7 @@ export function DashboardPage({ userId, onSelectProject, onProjects, onProfile, 
 
   return (
     <div>
-      {/* Navigation — full width */}
+      {/* Navigation */}
       <div style={{ padding: "24px 24px 16px", borderBottom: "1px solid #eee" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 8 }}>
@@ -101,7 +110,14 @@ export function DashboardPage({ userId, onSelectProject, onProjects, onProfile, 
 
       {/* Content */}
       <div style={{ padding: 24 }}>
-        <h2 style={{ margin: "0 0 4px" }}>Dashboard</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 4 }}>
+          <h2 style={{ margin: 0 }}>Dashboard</h2>
+          {!loading && tasks.length > 0 && (
+            <button onClick={() => setCollapsedProjects(collapsedProjects.size > 0 ? new Set() : new Set([...new Set(tasks.map(t => t.projectName))]))} className="keycap-btn keycap-btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }}>
+              {collapsedProjects.size > 0 ? "▦ Expand all" : "▤ Collapse all"}
+            </button>
+          )}
+        </div>
         <p style={{ margin: "0 0 16px", color: "#999", fontSize: 14 }}>All tasks across all projects</p>
 
         {statusError && <p style={{ color: "red", fontSize: 14, marginBottom: 12 }}>{statusError}</p>}
@@ -132,14 +148,20 @@ export function DashboardPage({ userId, onSelectProject, onProjects, onProfile, 
                   <div key={col.key} onDragOver={e => e.preventDefault()} onDrop={e => onDrop(e, col.key)} style={{ minWidth: 280, flex: 1, background: "#f5f5f5", padding: 12 }}>
                     <h3 style={{ margin: "0 0 12px", fontSize: 15, color: "#111" }}>{col.title} ({colTasks.length})</h3>
                     {projectNames.map(pname => {
+                      const isCollapsed = collapsedProjects.has(pname);
                       const color = projectColorMap.get(pname)!;
                       return (
                         <div key={pname} style={{ marginBottom: 12, background: color.bg, borderLeft: `4px solid ${color.border}`, padding: 8 }}>
-                          <div style={{ fontSize: 12, fontWeight: "bold", color: color.text, marginBottom: 6, padding: "0 4px" }}>{pname}</div>
-                          {groups.get(pname)!.map(t => {
+                          <div
+                            onClick={() => toggleProject(pname)}
+                            style={{ fontSize: 12, fontWeight: "bold", color: "#111", marginBottom: isCollapsed ? 0 : 6, padding: "0 4px", cursor: "pointer", userSelect: "none" }}
+                          >
+                            {isCollapsed ? "▸ " : "▾ "}{pname} ({groups.get(pname)!.length})
+                          </div>
+                          {!isCollapsed && groups.get(pname)!.map(t => {
                             const isExpanded = expandedTasks.has(t.id);
                             return (
-                              <div key={t.id}>
+                              <div key={t.id} className="task-card-enter" style={{ animation: "fadeSlideIn 0.2s ease" }}>
                                 <div
                                   draggable
                                   onDragStart={e => onDragStart(e, t.id)}
