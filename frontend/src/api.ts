@@ -27,6 +27,8 @@ export type UserRes = { id: number; username: string; email: string; role: numbe
 export type ProjectRes = { id: number; name: string; description: string; createdById: number }
 export type TaskRes = { id: number; title: string; description: string; projectId: number; assigneeId: number; status: number; priority: number; createdById: number }
 
+export type TaskWithProject = TaskRes & { projectName: string }
+
 export const authApi = {
   register: (data: { username: string; email: string; password: string; role: number }) =>
     req<UserRes>("/auth/register", data),
@@ -47,3 +49,14 @@ export const taskApi = {
   changeStatus: (taskId: number, data: { status: number; actorId: number }) =>
     req<TaskRes>(`/tasks/${taskId}/status`, data),
 };
+
+export async function getAllTasks(): Promise<TaskWithProject[]> {
+  const projects = await projectApi.list();
+  const all = await Promise.all(
+    projects.map(async p => {
+      const tasks = await taskApi.list(p.id);
+      return tasks.map(t => ({ ...t, projectName: p.name }));
+    })
+  );
+  return all.flat();
+}
