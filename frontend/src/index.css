@@ -8,5 +8,101 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
   background: #fff;
-  color: #333;
+  color: #111;
+  -webkit-text-stroke: 0.3px rgba(0,0,0,0.08);
+}
+
+/* Ensure headings and bold text have a slightly stronger stroke */
+h1, h2, h3, h4, strong, b {
+  -webkit-text-stroke: 0.4px rgba(0,0,0,0.12);
+}
+
+/* Monochrome focus ring — only for input fields */
+input:focus, textarea:focus, select:focus {
+  outline: 1px solid #222;
+  outline-offset: -1px;
+}
+
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 1px solid #222;
+  outline-offset: -1px;
+}
+
+/* Monochrome keycap buttons */
+.keycap-btn {
+  padding: 6px 16px;
+  border-radius: 0;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.06s ease;
+  box-shadow: 0 3px 0 #c0c0c0, 0 2px 4px rgba(0,0,0,0.08);
+  position: relative;
+  top: 0;
+}
+
+.keycap-btn:hover {
+  box-shadow: 0 1px 0 #c0c0c0;
+  top: 2px;
+}
+
+.keycap-btn-outline {
+  background: transparent;
+  color: #222;
+  border: 1px solid #222;
+}
+.keycap-btn-outline:hover {
+  background: #f0f0f0;
+}
+
+.keycap-btn-solid {
+  background: #222;
+  color: #fff;
+  border: 1px solid #222;
+  font-weight: bold;
+  box-shadow: 0 3px 0 #000, 0 2px 4px rgba(0,0,0,0.12);
+}
+.keycap-btn-solid:hover {
+  box-shadow: 0 1px 0 #000;
+  background: #111;
+}
+
+.keycap-btn-ghost {
+  background: transparent;
+  color: #999;
+  border: 1px solid #ccc;
+}
+.keycap-btn-ghost:hover {
+  background: #fafafa;
+}
+
+/* Smooth expand animation */
+.expand-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s ease;
+}
+.expand-wrap.open {
+  grid-template-rows: 1fr;
+}
+.expand-wrap > div {
+  overflow: hidden;
+}
+
+/* Task cards */
+.keycap-card {
+  padding: 10px;
+  margin-bottom: 6px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #d0d0d0, 0 1px 3px rgba(0,0,0,0.04);
+  transition: all 0.06s ease;
+  position: relative;
+  top: 0;
+  overflow: hidden;
+}
+.keycap-card:hover {
+  box-shadow: 0 1px 0 #d0d0d0;
+  top: 1px;
 }

@@ -39,7 +39,11 @@ const nav = (setPage: React.Dispatch<React.SetStateAction<Page>>, p: Page) => {
 function App() {
   const [page, setPage] = useState<Page>(initPage);
 
-  const s = () => getSession()!;
+  const s = (): NonNullable<ReturnType<typeof getSession>> => {
+    const session = getSession();
+    if (!session) { localStorage.clear(); setPage({ name: "login" }); throw new Error("Session expired"); }
+    return session;
+  };
 
   if (page.name === "login") return <LoginPage onLogin={(uid, un) => { nav(setPage, { name: "dashboard", userId: uid, username: un }); }} />;
   if (page.name === "tasks") return <TasksPage projectId={page.projectId} userId={page.userId} onBack={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username })} onDashboard={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username })} onProjects={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username })} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} />;
