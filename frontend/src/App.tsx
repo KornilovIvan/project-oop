@@ -7,17 +7,22 @@ import { ProfilePage } from "./ProfilePage";
 
 type Page =
   | { name: "login" }
-  | { name: "dashboard"; userId: number; username: string }
-  | { name: "projects"; userId: number; username: string }
-  | { name: "tasks"; projectId: number; userId: number }
-  | { name: "profile"; userId: number; username: string; email: string };
+  | { name: "dashboard"; userId: number; username: string; role: string }
+  | { name: "projects"; userId: number; username: string; role: string }
+  | { name: "tasks"; projectId: number; userId: number; role: string }
+  | { name: "profile"; userId: number; username: string; email: string; role: string };
 
-function getSession(): { userId: number; username: string; email: string } | null {
+function getSession(): { userId: number; username: string; email: string; role: string } | null {
   const token = localStorage.getItem("accessToken");
   if (!token) return null;
   try {
     const p = JSON.parse(atob(token.split(".")[1]));
-    return { userId: Number(p.nameid || p.sub || 0), username: p.unique_name || p.name || "", email: p.email || "" };
+    return {
+      userId: Number(p.nameid || p.sub || 0),
+      username: p.unique_name || p.name || "",
+      email: p.email || "",
+      role: p.role || p["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || "",
+    };
   } catch { localStorage.removeItem("accessToken"); return null; }
 }
 
@@ -25,8 +30,8 @@ function initPage(): Page {
   const s = getSession();
   if (!s) return { name: "login" };
   const saved = localStorage.getItem("page");
-  if (saved === "tasks") { const pid = localStorage.getItem("projectId"); if (pid) return { name: "tasks", projectId: Number(pid), userId: s.userId }; }
-  return { name: "dashboard", userId: s.userId, username: s.username };
+  if (saved === "tasks") { const pid = localStorage.getItem("projectId"); if (pid) return { name: "tasks", projectId: Number(pid), userId: s.userId, role: s.role }; }
+  return { name: "dashboard", userId: s.userId, username: s.username, role: s.role };
 }
 
 const nav = (setPage: React.Dispatch<React.SetStateAction<Page>>, p: Page) => {
@@ -45,11 +50,11 @@ function App() {
     return session;
   };
 
-  if (page.name === "login") return <LoginPage onLogin={(uid, un) => { nav(setPage, { name: "dashboard", userId: uid, username: un }); }} />;
-  if (page.name === "tasks") return <TasksPage projectId={page.projectId} userId={page.userId} onBack={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username })} onDashboard={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username })} onProjects={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username })} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} />;
-  if (page.name === "profile") return <ProfilePage userId={page.userId} username={page.username} email={page.email} onBack={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} onDashboard={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username })} onProjects={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username })} />;
-  if (page.name === "projects") return <ProjectsPage userId={page.userId} onSelectProject={pid => nav(setPage, { name: "tasks", projectId: pid, userId: page.userId })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email })} onDashboard={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username })} />;
-  return <DashboardPage userId={page.userId} onSelectProject={pid => nav(setPage, { name: "tasks", projectId: pid, userId: page.userId })} onProjects={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username })} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} />;
+  if (page.name === "login") return <LoginPage onLogin={() => { const session = s(); nav(setPage, { name: "dashboard", userId: session.userId, username: session.username, role: session.role }); }} />;
+  if (page.name === "tasks") return <TasksPage projectId={page.projectId} userId={page.userId} userRole={page.role} onBack={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username, role: s().role })} onDashboard={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username, role: s().role })} onProjects={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username, role: s().role })} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email, role: s().role })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} />;
+  if (page.name === "profile") return <ProfilePage userId={page.userId} username={page.username} email={page.email} role={page.role} onBack={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username, role: s().role })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} onDashboard={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username, role: s().role })} onProjects={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username, role: s().role })} />;
+  if (page.name === "projects") return <ProjectsPage userId={page.userId} userRole={page.role} onSelectProject={pid => nav(setPage, { name: "tasks", projectId: pid, userId: page.userId, role: page.role })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email, role: s().role })} onDashboard={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username, role: s().role })} />;
+  return <DashboardPage userId={page.userId} onSelectProject={pid => nav(setPage, { name: "tasks", projectId: pid, userId: page.userId, role: page.role })} onProjects={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username, role: s().role })} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email, role: s().role })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} />;
 }
 
 export default App;

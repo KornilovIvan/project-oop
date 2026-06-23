@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { taskApi } from "./api";
-import type { TaskRes } from "./api";
+import { projectApi, taskApi, userApi } from "./api";
+import type { ProjectRes, TaskRes, UserRes } from "./api";
 
-interface Props { projectId: number; userId: number; onBack: () => void; onDashboard?: () => void; onProjects?: () => void; onProfile?: () => void; onLogout?: () => void }
+interface Props { projectId: number; userId: number; userRole: string; onBack: () => void; onDashboard?: () => void; onProjects?: () => void; onProfile?: () => void; onLogout?: () => void }
 
 const columns = [
   { key: 1, title: "To Do" },
@@ -14,7 +14,14 @@ const columns = [
 const priorityLabels: Record<number, string> = { 1: "Low", 2: "Medium", 3: "High", 4: "Critical" };
 const priorityColors: Record<number, string> = { 1: "#d4d4d4", 2: "#c0c0c0", 3: "#a8a8a8", 4: "#888888" };
 
-function TaskDetailModal({ task, onClose }: { task: TaskRes; onClose: () => void }) {
+const canAssignTasks = (role: string) => role === "Admin" || role === "Manager";
+
+function userName(users: UserRes[], userId: number) {
+  if (!userId) return "Unassigned";
+  return users.find(user => user.id === userId)?.username || `User #${userId}`;
+}
+
+function TaskDetailModal({ task, users, onClose }: { task: TaskRes; users: UserRes[]; onClose: () => void }) {
   return (
     <div onClick={onClose} className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
       <div onClick={e => e.stopPropagation()} className="modal-content" style={{ background: "#fff", padding: 32, maxWidth: 500, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
@@ -26,21 +33,36 @@ function TaskDetailModal({ task, onClose }: { task: TaskRes; onClose: () => void
         <div style={{ display: "flex", gap: 12, fontSize: 14, color: "#888" }}>
           <span>Priority: <strong>{priorityLabels[task.priority] || "?"}</strong></span>
           <span>Status: <strong>{columns.find(c => c.key === task.status)?.title || "?"}</strong></span>
+          <span>Assignee: <strong>{userName(users, task.assigneeId)}</strong></span>
         </div>
       </div>
     </div>
   );
 }
 
-function CreateTaskModal({ onClose, onCreate }: { onClose: () => void; onCreate: (title: string, description: string, priority: number) => Promise<void> }) {
+function CreateTaskModal({
+  users,
+  project,
+  canAssign,
+  onClose,
+  onCreate,
+}: {
+  users: UserRes[];
+  project: ProjectRes | null;
+  canAssign: boolean;
+  onClose: () => void;
+  onCreate: (title: string, description: string, priority: number, assigneeId: number) => Promise<void>;
+}) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState(2);
+  const [assigneeId, setAssigneeId] = useState(0);
   const [error, setError] = useState("");
+  const memberUsers = users.filter(user => project?.memberIds.includes(user.id));
 
   const handleCreate = async () => {
     if (!title) { setError("Title is required"); return; }
-    try { setError(""); await onCreate(title, description, priority); onClose(); }
+    try { setError(""); await onCreate(title, description, priority, assigneeId); onClose(); }
     catch (e: unknown) { setError(e instanceof Error ? e.message : "Failed to create task"); }
   };
 
@@ -56,6 +78,12 @@ function CreateTaskModal({ onClose, onCreate }: { onClose: () => void; onCreate:
         <select value={priority} onChange={e => setPriority(Number(e.target.value))} style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }}>
           <option value={1}>Low</option><option value={2}>Medium</option><option value={3}>High</option><option value={4}>Critical</option>
         </select>
+        {canAssign && (
+          <select value={assigneeId} onChange={e => setAssigneeId(Number(e.target.value))} style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }}>
+            <option value={0}>Unassigned</option>
+            {memberUsers.map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
+          </select>
+        )}
         {error && <p style={{ color: "red", fontSize: 14, marginBottom: 8 }}>{error}</p>}
         <button onClick={handleCreate} className="keycap-btn keycap-btn-solid" style={{ width: "100%", padding: 10, fontSize: 15 }}>Create</button>
       </div>
@@ -63,18 +91,35 @@ function CreateTaskModal({ onClose, onCreate }: { onClose: () => void; onCreate:
   );
 }
 
-export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, onProfile, onLogout }: Props) {
+export function TasksPage({ projectId, userId, userRole, onBack, onDashboard, onProjects, onProfile, onLogout }: Props) {
   const [tasks, setTasks] = useState<TaskRes[]>([]);
+  const [project, setProject] = useState<ProjectRes | null>(null);
+  const [users, setUsers] = useState<UserRes[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [detailTask, setDetailTask] = useState<TaskRes | null>(null);
   const [statusError, setStatusError] = useState("");
+  const canAssign = canAssignTasks(userRole);
 
   const load = () => taskApi.list(projectId).then(setTasks);
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); projectApi.get(projectId).then(setProject).catch(() => null); }, [projectId]);
+  useEffect(() => {
+    if (!canAssign) return;
+    userApi.list().then(setUsers).catch(e => setStatusError(e instanceof Error ? e.message : "Failed to load users"));
+  }, [canAssign]);
 
-  const handleCreate = async (title: string, description: string, priority: number) => {
-    await taskApi.create({ title, description, projectId, createdById: userId, priority });
+  const handleCreate = async (title: string, description: string, priority: number, assigneeId: number) => {
+    await taskApi.create({ title, description, projectId, createdById: userId, priority, assigneeId });
     await load();
+  };
+
+  const assignTask = async (taskId: number, assigneeId: number) => {
+    try {
+      setStatusError("");
+      await taskApi.assign(taskId, assigneeId);
+      await load();
+    } catch (error: unknown) {
+      setStatusError(error instanceof Error ? error.message : "Failed to assign task");
+    }
   };
 
   const changeStatus = async (taskId: number, status: number) => {
@@ -101,8 +146,8 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
 
   return (
     <div>
-      {detailTask && <TaskDetailModal task={detailTask} onClose={() => setDetailTask(null)} />}
-      {showCreate && <CreateTaskModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
+      {detailTask && <TaskDetailModal task={detailTask} users={users} onClose={() => setDetailTask(null)} />}
+      {showCreate && <CreateTaskModal users={users} project={project} canAssign={canAssign} onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
 
       {/* Navigation */}
       <div style={{ padding: "24px 24px 16px", borderBottom: "1px solid #eee" }}>
@@ -138,6 +183,18 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
                     <span style={{ fontSize: 11, padding: "2px 6px", background: priorityColors[t.priority] || "#999", color: "#fff" }}>{priorityLabels[t.priority] || "?"}</span>
                   </div>
                   {t.description && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#888" }}>{t.description}</p>}
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#777" }}>Assignee: <strong>{userName(users, t.assigneeId)}</strong></div>
+                  {canAssign && (
+                    <select
+                      value={t.assigneeId || 0}
+                      onClick={e => e.stopPropagation()}
+                      onChange={e => assignTask(t.id, Number(e.target.value))}
+                      style={{ width: "100%", marginTop: 8, padding: "6px 8px", border: "1px solid #ddd", fontSize: 13 }}
+                    >
+                      <option value={0} disabled>Assign to...</option>
+                      {users.filter(user => project?.memberIds.includes(user.id)).map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
+                    </select>
+                  )}
                 </div>
               ))}
             </div>

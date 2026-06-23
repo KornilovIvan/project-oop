@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { authApi, setAccessToken } from "./api";
 
-const DEFAULT_ROLE = 3; // Observer
-
 interface Props { onLogin: (userId: number, username: string) => void }
 
 export function LoginPage({ onLogin }: Props) {
@@ -11,6 +9,7 @@ export function LoginPage({ onLogin }: Props) {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState(3);
   const [error, setError] = useState("");
 
   const handleLogin = async () => {
@@ -28,7 +27,7 @@ export function LoginPage({ onLogin }: Props) {
       if (!username.trim() || !email.trim() || !password.trim()) { setError("All fields are required"); return; }
       if (!email.includes("@")) { setError("Email must contain @"); return; }
       if (username.includes("@")) { setError("Username cannot contain @"); return; }
-      await authApi.register({ username, email, password, role: DEFAULT_ROLE });
+      await authApi.register({ username, email, password, role });
       const { token, user } = await authApi.login({ email, password });
       setAccessToken(token);
       onLogin(user.id, user.username);
@@ -55,6 +54,10 @@ export function LoginPage({ onLogin }: Props) {
           <input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} style={s} />
           <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={s} />
           <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} style={s} />
+          <select value={role} onChange={e => setRole(Number(e.target.value))} style={s}>
+            <option value={3}>Executor</option>
+            <option value={4}>Observer</option>
+          </select>
           {error && <p style={{ color: "red", fontSize: 14 }}>{error}</p>}
           <button onClick={handleRegister} className="keycap-btn keycap-btn-solid" style={{ width: "100%", padding: 10, marginTop: 16, fontSize: 16 }}>Register</button>
         </>
