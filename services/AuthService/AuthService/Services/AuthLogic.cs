@@ -48,16 +48,17 @@ public class AuthLogic(AuthDbContext database)
         return user;
     }
 
-    public async Task<User> Login(string email, string password, CancellationToken cancellationToken)
+    public async Task<User> Login(string login, string password, CancellationToken cancellationToken)
     {
-        var normalizedEmail = email.Trim().ToUpperInvariant();
+        var normalized = login.Trim().ToUpperInvariant();
+        var isEmail = login.Contains('@');
         var user = await database.Users.FirstOrDefaultAsync(
-            candidate => candidate.NormalizedEmail == normalizedEmail,
+            candidate => isEmail ? candidate.NormalizedEmail == normalized : candidate.NormalizedUsername == normalized,
             cancellationToken);
 
         if (user is null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
         {
-            throw new RpcException(new Status(StatusCode.Unauthenticated, "Invalid email or password"));
+            throw new RpcException(new Status(StatusCode.Unauthenticated, "Invalid credentials"));
         }
 
         return user;

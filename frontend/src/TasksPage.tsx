@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { taskApi } from "./api";
 import type { TaskRes } from "./api";
 
-interface Props { projectId: number; userId: number; onBack: () => void }
+interface Props { projectId: number; userId: number; onBack: () => void; onDashboard?: () => void; onProjects?: () => void; onProfile?: () => void; onLogout?: () => void }
 
 const columns = [
   { key: 1, title: "To Do" },
@@ -12,12 +12,12 @@ const columns = [
 ];
 
 const priorityLabels: Record<number, string> = { 1: "Low", 2: "Medium", 3: "High", 4: "Critical" };
-const priorityColors: Record<number, string> = { 1: "#999", 2: "#1677ff", 3: "#ffa940", 4: "#ff4d4f" };
+const priorityColors: Record<number, string> = { 1: "#d4d4d4", 2: "#c0c0c0", 3: "#a8a8a8", 4: "#888888" };
 
-function TaskModal({ task, onClose }: { task: TaskRes; onClose: () => void }) {
+function TaskDetailModal({ task, onClose }: { task: TaskRes; onClose: () => void }) {
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 12, padding: 32, maxWidth: 500, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
+    <div onClick={onClose} className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+      <div onClick={e => e.stopPropagation()} className="modal-content" style={{ background: "#fff", padding: 32, maxWidth: 500, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 16 }}>
           <h2 style={{ margin: 0 }}>{task.title}</h2>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#999" }}>✕</button>
@@ -32,22 +32,49 @@ function TaskModal({ task, onClose }: { task: TaskRes; onClose: () => void }) {
   );
 }
 
-export function TasksPage({ projectId, userId, onBack }: Props) {
-  const [tasks, setTasks] = useState<TaskRes[]>([]);
+function CreateTaskModal({ onClose, onCreate }: { onClose: () => void; onCreate: (title: string, description: string, priority: number) => Promise<void> }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState(2);
-  const [modalTask, setModalTask] = useState<TaskRes | null>(null);
-  const [createError, setCreateError] = useState("");
+  const [error, setError] = useState("");
+
+  const handleCreate = async () => {
+    if (!title) { setError("Title is required"); return; }
+    try { setError(""); await onCreate(title, description, priority); onClose(); }
+    catch (e: unknown) { setError(e instanceof Error ? e.message : "Failed to create task"); }
+  };
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", padding: 32, maxWidth: 450, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h3 style={{ margin: 0 }}>New Task</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#999" }}>✕</button>
+        </div>
+        <input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} autoFocus style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }} />
+        <input placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }} />
+        <select value={priority} onChange={e => setPriority(Number(e.target.value))} style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }}>
+          <option value={1}>Low</option><option value={2}>Medium</option><option value={3}>High</option><option value={4}>Critical</option>
+        </select>
+        {error && <p style={{ color: "red", fontSize: 14, marginBottom: 8 }}>{error}</p>}
+        <button onClick={handleCreate} className="keycap-btn keycap-btn-solid" style={{ width: "100%", padding: 10, fontSize: 15 }}>Create</button>
+      </div>
+    </div>
+  );
+}
+
+export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, onProfile, onLogout }: Props) {
+  const [tasks, setTasks] = useState<TaskRes[]>([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [detailTask, setDetailTask] = useState<TaskRes | null>(null);
   const [statusError, setStatusError] = useState("");
 
   const load = () => taskApi.list(projectId).then(setTasks);
   useEffect(() => { load(); }, []);
 
-  const create = async () => {
-    if (!title) return;
-    try { setCreateError(""); await taskApi.create({ title, description, projectId, createdById: userId, priority }); setTitle(""); setDescription(""); load(); }
-    catch (e: unknown) { setCreateError(e instanceof Error ? e.message : "Failed"); }
+  const handleCreate = async (title: string, description: string, priority: number) => {
+    await taskApi.create({ title, description, projectId, createdById: userId, priority });
+    await load();
   };
 
   const changeStatus = async (taskId: number, status: number) => {
@@ -73,42 +100,50 @@ export function TasksPage({ projectId, userId, onBack }: Props) {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      {modalTask && <TaskModal task={modalTask} onClose={() => setModalTask(null)} />}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
-        <button onClick={onBack} style={{ padding: "6px 12px", background: "transparent", color: "#1677ff", border: "1px solid #1677ff", borderRadius: 6, fontSize: 14, cursor: "pointer" }}>← Back</button>
-        <h2 style={{ margin: 0 }}>Tasks</h2>
-      </div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
-        <input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} style={{ ...inp, flex: 1, minWidth: 200 }} />
-        <input placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} style={{ ...inp, flex: 1, minWidth: 200 }} />
-        <select value={priority} onChange={e => setPriority(Number(e.target.value))} style={inp}>
-          <option value={1}>Low</option><option value={2}>Medium</option><option value={3}>High</option><option value={4}>Critical</option>
-        </select>
-        <button onClick={create} style={btn}>Create</button>
-      </div>
-      {createError && <p style={{ color: "red", fontSize: 14, marginBottom: 12 }}>{createError}</p>}
-      {statusError && <p style={{ color: "red", fontSize: 14, marginBottom: 12 }}>{statusError}</p>}
+    <div>
+      {detailTask && <TaskDetailModal task={detailTask} onClose={() => setDetailTask(null)} />}
+      {showCreate && <CreateTaskModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
 
-      <div style={{ display: "flex", gap: 16, overflowX: "auto" }}>
-        {columns.map(col => (
-          <div key={col.key} onDragOver={e => e.preventDefault()} onDrop={e => onDrop(e, col.key)} style={{ minWidth: 250, flex: 1, background: "#f5f5f5", borderRadius: 8, padding: 12 }}>
-            <h3 style={{ margin: "0 0 12px", fontSize: 15, color: "#555" }}>{col.title}</h3>
-            {tasks.filter(t => t.status === col.key).map(t => (
-              <div key={t.id} draggable onDragStart={e => onDragStart(e, t.id)} onClick={() => setModalTask(t)} style={{ padding: 12, marginBottom: 8, background: "#fff", borderRadius: 8, border: "1px solid #eee", cursor: "pointer" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <strong style={{ fontSize: 14 }}>{t.title}</strong>
-                  <span style={{ fontSize: 11, padding: "2px 6px", borderRadius: 3, background: priorityColors[t.priority] || "#999", color: "#fff" }}>{priorityLabels[t.priority] || "?"}</span>
-                </div>
-                {t.description && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#888" }}>{t.description}</p>}
-              </div>
-            ))}
+      {/* Navigation */}
+      <div style={{ padding: "24px 24px 16px", borderBottom: "1px solid #eee" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            {onDashboard && <button onClick={onDashboard} className="keycap-btn keycap-btn-outline">Home</button>}
+            {onProjects && <button onClick={onProjects} className="keycap-btn keycap-btn-outline">My Projects</button>}
           </div>
-        ))}
+          <div style={{ display: "flex", gap: 8 }}>
+            {onProfile && <button onClick={onProfile} className="keycap-btn keycap-btn-outline">Profile</button>}
+            {onLogout && <button onClick={onLogout} className="keycap-btn keycap-btn-ghost">Logout</button>}
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div style={{ padding: 24 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <button onClick={onBack} className="back-btn keycap-btn keycap-btn-ghost" style={{ padding: "6px 12px", fontSize: 14 }}>← Back to Projects</button>
+          <button onClick={() => setShowCreate(true)} className="keycap-btn keycap-btn-solid">+ New Task</button>
+        </div>
+
+        {statusError && <p style={{ color: "red", fontSize: 14, marginBottom: 12 }}>{statusError}</p>}
+
+        <div style={{ display: "flex", gap: 16, overflowX: "auto" }}>
+          {columns.map(col => (
+            <div key={col.key} onDragOver={e => e.preventDefault()} onDrop={e => onDrop(e, col.key)} style={{ minWidth: 250, flex: 1, background: "#f5f5f5", padding: 12 }}>
+              <h3 style={{ margin: "0 0 12px", fontSize: 15, color: "#555" }}>{col.title}</h3>
+              {tasks.filter(t => t.status === col.key).map(t => (
+                <div key={t.id} draggable onDragStart={e => onDragStart(e, t.id)} onClick={() => setDetailTask(t)} style={{ padding: 12, marginBottom: 8, background: "#fff", border: "1px solid #e0e0e0", cursor: "pointer", boxShadow: "0 2px 0 #d0d0d0, 0 1px 3px rgba(0,0,0,0.04)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <strong style={{ fontSize: 14 }}>{t.title}</strong>
+                    <span style={{ fontSize: 11, padding: "2px 6px", background: priorityColors[t.priority] || "#999", color: "#fff" }}>{priorityLabels[t.priority] || "?"}</span>
+                  </div>
+                  {t.description && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#888" }}>{t.description}</p>}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
-
-const inp: React.CSSProperties = { padding: "8px 12px", border: "1px solid #ddd", borderRadius: 6, fontSize: 15 };
-const btn: React.CSSProperties = { padding: "8px 20px", background: "#1677ff", color: "#fff", border: "none", borderRadius: 6, fontSize: 15, cursor: "pointer", whiteSpace: "nowrap" };
