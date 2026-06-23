@@ -46,8 +46,25 @@ export const userApi = {
 
 export const projectApi = {
   list: () => req<ProjectRes[]>("/projects"),
-  create: (data: { name: string; description: string; createdById: number }) =>
-    req<ProjectRes>("/projects", data),
+  create: async (data: { name: string; description: string; createdById: number }) => {
+    const r = await fetch(BASE + "/projects", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(localStorage.getItem("accessToken")
+          ? { Authorization: `Bearer ${localStorage.getItem("accessToken")}` }
+          : {}),
+      },
+      body: JSON.stringify(data),
+    });
+    if (!r.ok) {
+      const response = await r.json().catch(() => null) as { error?: string } | null;
+      throw new Error(response?.error || r.statusText);
+    }
+    const newToken = r.headers.get("X-New-Token");
+    if (newToken) localStorage.setItem("accessToken", newToken);
+    return r.json() as Promise<ProjectRes>;
+  },
   get: async (projectId: number) => {
     const projects = await req<ProjectRes[]>("/projects");
     const project = projects.find(p => p.id === projectId);
@@ -58,6 +75,8 @@ export const projectApi = {
     req<ProjectRes>(`/projects/${projectId}/members/${userId}`, {}),
   removeMember: (projectId: number, userId: number) =>
     req<void>(`/projects/${projectId}/members/${userId}`, undefined, "DELETE"),
+  delete: (projectId: number) =>
+    req<void>(`/projects/${projectId}`, undefined, "DELETE"),
 };
 
 export const taskApi = {
@@ -68,6 +87,8 @@ export const taskApi = {
     req<TaskRes>(`/tasks/${taskId}/assignee`, { assigneeId }),
   changeStatus: (taskId: number, data: { status: number; actorId: number }) =>
     req<TaskRes>(`/tasks/${taskId}/status`, data),
+  delete: (taskId: number) =>
+    req<void>(`/tasks/${taskId}`, undefined, "DELETE"),
 };
 
 export async function getAllTasks(): Promise<TaskWithProject[]> {

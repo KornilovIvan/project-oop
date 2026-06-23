@@ -129,6 +129,15 @@ public class ProjectLogic
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task Delete(int id,CancellationToken ct)
+    {
+        var project=await _db.Projects.Include(p=>p.Members).FirstOrDefaultAsync(p=>p.Id==id,ct)
+            ?? throw new RpcException(new Status(StatusCode.NotFound,"Project not found"));
+
+        _db.Projects.Remove(project);
+        await _db.SaveChangesAsync(ct);
+    }
+
     static RpcException InvalidArgument(string message)=>new(new Status(StatusCode.InvalidArgument,message));
 }
 
@@ -166,6 +175,12 @@ public class ProjectHandler:ProjectService.ProjectServiceBase
     public override async Task<Empty> RemoveMember(RemoveProjectMemberRequest r,ServerCallContext ctx)
     {
         await _svc.RemoveMember(r.ProjectId,r.UserId,ctx.CancellationToken);
+        return new Empty();
+    }
+
+    public override async Task<Empty> DeleteProject(DeleteProjectRequest r,ServerCallContext ctx)
+    {
+        await _svc.Delete(r.Id,ctx.CancellationToken);
         return new Empty();
     }
 
