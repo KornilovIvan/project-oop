@@ -163,8 +163,15 @@ app.MapPost("/api/tasks/{taskId}/assignee", async (int taskId, AssignTaskRequest
     .RequireAuthorization();
 app.MapDelete("/api/tasks/{taskId}", async (int taskId, ClaimsPrincipal principal) =>
     {
+        var currentUserId = CurrentUserId(principal);
         var task = await tasks.GetTaskAsync(new GetTaskRequest { Id = taskId });
-        await EnsureProjectAccess(task.ProjectId, principal);
+        var project = await EnsureProjectAccess(task.ProjectId, principal);
+
+        if (task.CreatedById != currentUserId && !project.AdminIds.Contains(currentUserId))
+            throw new RpcException(new Status(
+                StatusCode.PermissionDenied,
+                "Only task creator or project admin can delete task"));
+
         await tasks.DeleteTaskAsync(new DeleteTaskRequest { Id = taskId });
         return Results.NoContent();
     })
