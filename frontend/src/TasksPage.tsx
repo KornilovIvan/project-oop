@@ -263,7 +263,11 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <button onClick={onBack} className="back-btn keycap-btn keycap-btn-ghost" style={{ padding: "6px 12px", fontSize: 14 }}>← Back to Projects</button>
           <div style={{ display: "flex", gap: 8 }}>
-            {project && <button onClick={() => setMembersProject(project)} className="keycap-btn keycap-btn-outline" style={{ fontSize: 13 }}>Invite</button>}
+            {project?.adminIds.includes(userId) && (
+              <button onClick={() => setMembersProject(project)} className="keycap-btn keycap-btn-outline" style={{ fontSize: 13 }}>
+                Invite
+              </button>
+            )}
             <button onClick={() => setShowCreate(true)} className="keycap-btn keycap-btn-solid">+ New Task</button>
           </div>
         </div>
