@@ -123,7 +123,7 @@ app.MapDelete("/api/projects/{projectId}/members/{userId}", async (int projectId
     .RequireAuthorization();
 app.MapDelete("/api/projects/{projectId}", async (int projectId, ClaimsPrincipal principal) =>
     {
-        await EnsureProjectAccess(projectId, principal);
+        await EnsureProjectAdmin(projectId, principal);
         await projects.DeleteProjectAsync(new DeleteProjectRequest { Id = projectId });
         return Results.NoContent();
     })
