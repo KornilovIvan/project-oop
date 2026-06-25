@@ -42,19 +42,21 @@ function CreateTaskModal({
   users,
   project,
   canAssign,
+  currentUserId,
   onClose,
   onCreate,
 }: {
   users: UserRes[];
   project: ProjectRes | null;
   canAssign: boolean;
+  currentUserId: number;
   onClose: () => void;
   onCreate: (title: string, description: string, priority: number, assigneeId: number) => Promise<void>;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState(2);
-  const [assigneeId, setAssigneeId] = useState(0);
+  const [assigneeId, setAssigneeId] = useState(currentUserId);
   const [error, setError] = useState("");
   const memberUsers = users.filter(user => project?.memberIds.includes(user.id));
 
@@ -78,7 +80,6 @@ function CreateTaskModal({
         </select>
         {canAssign && (
           <select value={assigneeId} onChange={e => setAssigneeId(Number(e.target.value))} style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }}>
-            <option value={0}>Unassigned</option>
             {memberUsers.map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
           </select>
         )}
@@ -99,6 +100,7 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; task: TaskRes } | null>(null);
   const [membersProject, setMembersProject] = useState<ProjectRes | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const isProjectAdmin = project?.adminIds.includes(userId) ?? false;
 
   useEffect(() => {
     if (!ctxMenu) return;
@@ -158,7 +160,16 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
   return (
     <div>
       {detailTask && <TaskDetailModal task={detailTask} users={users} onClose={() => setDetailTask(null)} />}
-      {showCreate && <CreateTaskModal users={users} project={project} canAssign={true} onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
+      {showCreate && (
+        <CreateTaskModal
+          users={users}
+          project={project}
+          canAssign={isProjectAdmin}
+          currentUserId={userId}
+          onClose={() => setShowCreate(false)}
+          onCreate={handleCreate}
+        />
+      )}
 
       {/* Navigation */}
       <div style={{ padding: "24px 24px 16px", borderBottom: "1px solid #eee" }}>
@@ -286,15 +297,16 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
                   </div>
                   {t.description && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#888" }}>{t.description}</p>}
                   <div style={{ marginTop: 8, fontSize: 12, color: "#777" }}>Assignee: <strong>{userName(users, t.assigneeId)}</strong></div>
-                  <select
-                    value={t.assigneeId || 0}
-                    onClick={e => e.stopPropagation()}
-                    onChange={e => assignTask(t.id, Number(e.target.value))}
-                    style={{ width: "100%", marginTop: 8, padding: "6px 8px", border: "1px solid #ddd", fontSize: 13 }}
-                  >
-                    <option value={0} disabled>Assign to...</option>
-                    {users.filter(user => project?.memberIds.includes(user.id)).map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
-                  </select>
+                  {isProjectAdmin && (
+                    <select
+                      value={t.assigneeId}
+                      onClick={e => e.stopPropagation()}
+                      onChange={e => assignTask(t.id, Number(e.target.value))}
+                      style={{ width: "100%", marginTop: 8, padding: "6px 8px", border: "1px solid #ddd", fontSize: 13 }}
+                    >
+                      {users.filter(user => project?.memberIds.includes(user.id)).map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
+                    </select>
+                  )}
                 </div>
               ))}
             </div>

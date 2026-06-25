@@ -141,9 +141,10 @@ app.MapPost("/api/tasks", async (CreateTaskRequest request, ClaimsPrincipal prin
         var project = await EnsureProjectAccess(request.ProjectId, principal);
 
         request.CreatedById = currentUserId;
-        request.AssigneeId = currentUserId;
+        if (!project.AdminIds.Contains(currentUserId))
+            request.AssigneeId = currentUserId;
 
-        if (request.AssigneeId > 0 && !project.MemberIds.Contains(request.AssigneeId))
+        if (!project.MemberIds.Contains(request.AssigneeId))
             throw new RpcException(new Status(StatusCode.InvalidArgument, "Assignee must be a project member"));
 
         return Results.Ok(await tasks.CreateTaskAsync(request));
