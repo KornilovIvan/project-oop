@@ -95,6 +95,15 @@ public class TaskLogic(TaskDbContext database)
         await database.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task DeleteByProject(
+        int projectId,
+        CancellationToken cancellationToken)
+    {
+        await database.Tasks
+            .Where(task => task.ProjectId == projectId)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
     private static RpcException InvalidArgument(string message) =>
         new(new Status(StatusCode.InvalidArgument, message));
 }

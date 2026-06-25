@@ -124,6 +124,7 @@ app.MapDelete("/api/projects/{projectId}/members/{userId}", async (int projectId
 app.MapDelete("/api/projects/{projectId}", async (int projectId, ClaimsPrincipal principal) =>
     {
         await EnsureProjectAdmin(projectId, principal);
+        await tasks.DeleteTasksByProjectAsync(new DeleteTasksByProjectRequest { ProjectId = projectId });
         await projects.DeleteProjectAsync(new DeleteProjectRequest { Id = projectId });
         return Results.NoContent();
     })

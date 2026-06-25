@@ -33,6 +33,7 @@ service TaskService {
   rpc AssignTask (AssignTaskRequest) returns (TaskResponse);
   rpc ChangeStatus (ChangeTaskStatusRequest) returns (TaskResponse);
   rpc DeleteTask (DeleteTaskRequest) returns (google.protobuf.Empty);
+  rpc DeleteTasksByProject (DeleteTasksByProjectRequest) returns (google.protobuf.Empty);
 }
 
 enum UserRole {
@@ -143,6 +144,10 @@ message AssignTaskRequest {
 
 message DeleteTaskRequest {
   int32 id = 1;
+}
+
+message DeleteTasksByProjectRequest {
+  int32 project_id = 1;
 }
 
 message ChangeTaskStatusRequest {
