@@ -48,9 +48,6 @@ namespace AuthService.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("Role")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -66,8 +63,6 @@ namespace AuthService.Data.Migrations
 
                     b.ToTable("Users", t =>
                         {
-                            t.HasCheckConstraint("CK_Users_Role", "\"Role\" IN (2, 3)");
-
                             t.HasCheckConstraint("CK_Users_Username_NotEmpty", "length(trim(\"Username\")) >= 3");
                         });
                 });

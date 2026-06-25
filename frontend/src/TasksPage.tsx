@@ -25,9 +25,9 @@ function TaskDetailModal({ task, users, onClose }: { task: TaskRes; users: UserR
       <div onClick={e => e.stopPropagation()} className="modal-content" style={{ background: "#fff", padding: 32, maxWidth: 500, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 16 }}>
           <h2 style={{ margin: 0 }}>{task.title}</h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#999" }}>✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#999" }}>x</button>
         </div>
-        <p style={{ color: "#666", marginBottom: 16, lineHeight: 1.5 }}>{task.description || "— no description —"}</p>
+        <p style={{ color: "#666", marginBottom: 16, lineHeight: 1.5 }}>{task.description || "No description"}</p>
         <div style={{ display: "flex", gap: 12, fontSize: 14, color: "#888" }}>
           <span>Priority: <strong>{priorityLabels[task.priority] || "?"}</strong></span>
           <span>Status: <strong>{columns.find(c => c.key === task.status)?.title || "?"}</strong></span>
@@ -42,19 +42,21 @@ function CreateTaskModal({
   users,
   project,
   canAssign,
+  currentUserId,
   onClose,
   onCreate,
 }: {
   users: UserRes[];
   project: ProjectRes | null;
   canAssign: boolean;
+  currentUserId: number;
   onClose: () => void;
   onCreate: (title: string, description: string, priority: number, assigneeId: number) => Promise<void>;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState(2);
-  const [assigneeId, setAssigneeId] = useState(0);
+  const [assigneeId, setAssigneeId] = useState(currentUserId);
   const [error, setError] = useState("");
   const memberUsers = users.filter(user => project?.memberIds.includes(user.id));
 
@@ -69,7 +71,7 @@ function CreateTaskModal({
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", padding: 32, maxWidth: 450, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h3 style={{ margin: 0 }}>New Task</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#999" }}>✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#999" }}>x</button>
         </div>
         <input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} autoFocus style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }} />
         <input placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }} />
@@ -78,7 +80,6 @@ function CreateTaskModal({
         </select>
         {canAssign && (
           <select value={assigneeId} onChange={e => setAssigneeId(Number(e.target.value))} style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }}>
-            <option value={0}>Unassigned</option>
             {memberUsers.map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
           </select>
         )}
@@ -99,6 +100,7 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; task: TaskRes } | null>(null);
   const [membersProject, setMembersProject] = useState<ProjectRes | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const isProjectAdmin = project?.adminIds.includes(userId) ?? false;
 
   useEffect(() => {
     if (!ctxMenu) return;
@@ -158,7 +160,16 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
   return (
     <div>
       {detailTask && <TaskDetailModal task={detailTask} users={users} onClose={() => setDetailTask(null)} />}
-      {showCreate && <CreateTaskModal users={users} project={project} canAssign={true} onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
+      {showCreate && (
+        <CreateTaskModal
+          users={users}
+          project={project}
+          canAssign={isProjectAdmin}
+          currentUserId={userId}
+          onClose={() => setShowCreate(false)}
+          onCreate={handleCreate}
+        />
+      )}
 
       {/* Navigation */}
       <div style={{ padding: "24px 24px 16px", borderBottom: "1px solid #eee" }}>
@@ -195,7 +206,17 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
                     <span style={{ fontSize: 12, color: "#777" }}>
                       {membersProject.adminIds.includes(user.id) ? "Admin" : "Executor"}
                     </span>
-                    <button onClick={async () => { try { await projectApi.removeMember(membersProject.id, user.id); const updated = await projectApi.get(membersProject.id); setMembersProject(updated); } catch (err) { alert(err instanceof Error ? err.message : "Failed"); } }} className="keycap-btn keycap-btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }}>Remove</button>
+                    <button onClick={async () => {
+                      try {
+                        await projectApi.removeMember(membersProject.id, user.id);
+                        const updated = await projectApi.get(membersProject.id);
+                        setMembersProject(updated);
+                        setProject(updated);
+                        await load();
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : "Failed");
+                      }
+                    }} className="keycap-btn keycap-btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }}>Remove</button>
                   </div>
                 </div>
               ))}
@@ -211,7 +232,16 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
                       <div style={{ fontSize: 14, fontWeight: 600 }}>{user.username}</div>
                       <div style={{ fontSize: 12, color: "#888" }}>{user.email}</div>
                     </div>
-                    <button onClick={async () => { try { const updated = await projectApi.addMember(membersProject.id, user.id); setMembersProject(updated); setSearchQuery(""); } catch (err) { alert(err instanceof Error ? err.message : "Failed"); } }} className="keycap-btn keycap-btn-outline" style={{ padding: "4px 10px", fontSize: 12 }}>Add</button>
+                    <button onClick={async () => {
+                      try {
+                        const updated = await projectApi.addMember(membersProject.id, user.id);
+                        setMembersProject(updated);
+                        setProject(updated);
+                        setSearchQuery("");
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : "Failed");
+                      }
+                    }} className="keycap-btn keycap-btn-outline" style={{ padding: "4px 10px", fontSize: 12 }}>Add</button>
                   </div>
                 ))}
                 {users.filter(u => !membersProject.memberIds.includes(u.id) && (u.username.toLowerCase().includes(searchQuery.toLowerCase()) || u.email.toLowerCase().includes(searchQuery.toLowerCase()))).length === 0 && <p style={{ color: "#999", fontSize: 13 }}>No users found.</p>}
@@ -242,9 +272,13 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
       {/* Content */}
       <div style={{ padding: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <button onClick={onBack} className="back-btn keycap-btn keycap-btn-ghost" style={{ padding: "6px 12px", fontSize: 14 }}>← Back to Projects</button>
+          <button onClick={onBack} className="back-btn keycap-btn keycap-btn-ghost" style={{ padding: "6px 12px", fontSize: 14 }}>Back to Projects</button>
           <div style={{ display: "flex", gap: 8 }}>
-            {project && <button onClick={() => setMembersProject(project)} className="keycap-btn keycap-btn-outline" style={{ fontSize: 13 }}>Invite</button>}
+            {project?.adminIds.includes(userId) && (
+              <button onClick={() => setMembersProject(project)} className="keycap-btn keycap-btn-outline" style={{ fontSize: 13 }}>
+                Invite
+              </button>
+            )}
             <button onClick={() => setShowCreate(true)} className="keycap-btn keycap-btn-solid">+ New Task</button>
           </div>
         </div>
@@ -263,15 +297,16 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
                   </div>
                   {t.description && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#888" }}>{t.description}</p>}
                   <div style={{ marginTop: 8, fontSize: 12, color: "#777" }}>Assignee: <strong>{userName(users, t.assigneeId)}</strong></div>
-                  <select
-                    value={t.assigneeId || 0}
-                    onClick={e => e.stopPropagation()}
-                    onChange={e => assignTask(t.id, Number(e.target.value))}
-                    style={{ width: "100%", marginTop: 8, padding: "6px 8px", border: "1px solid #ddd", fontSize: 13 }}
-                  >
-                    <option value={0} disabled>Assign to...</option>
-                    {users.filter(user => project?.memberIds.includes(user.id)).map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
-                  </select>
+                  {isProjectAdmin && (
+                    <select
+                      value={t.assigneeId}
+                      onClick={e => e.stopPropagation()}
+                      onChange={e => assignTask(t.id, Number(e.target.value))}
+                      style={{ width: "100%", marginTop: 8, padding: "6px 8px", border: "1px solid #ddd", fontSize: 13 }}
+                    >
+                      {users.filter(user => project?.memberIds.includes(user.id)).map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
+                    </select>
+                  )}
                 </div>
               ))}
             </div>

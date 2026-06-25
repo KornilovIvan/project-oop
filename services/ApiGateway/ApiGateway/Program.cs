@@ -105,14 +105,26 @@ app.MapPost("/api/projects/{projectId}/members/{userId}", async (int projectId, 
     .RequireAuthorization();
 app.MapDelete("/api/projects/{projectId}/members/{userId}", async (int projectId, int userId, ClaimsPrincipal principal) =>
     {
-        await EnsureProjectAdmin(projectId, principal);
+        var project = await EnsureProjectAdmin(projectId, principal);
+        var projectTasks = await tasks.ListTasksAsync(new ListTasksRequest { ProjectId = projectId });
+
+        foreach (var task in projectTasks.Tasks.Where(task => task.AssigneeId == userId))
+        {
+            await tasks.AssignTaskAsync(new AssignTaskRequest
+            {
+                TaskId = task.Id,
+                AssigneeId = project.CreatedById
+            });
+        }
+
         await projects.RemoveMemberAsync(new RemoveProjectMemberRequest { ProjectId = projectId, UserId = userId });
         return Results.NoContent();
     })
     .RequireAuthorization();
 app.MapDelete("/api/projects/{projectId}", async (int projectId, ClaimsPrincipal principal) =>
     {
-        await EnsureProjectAccess(projectId, principal);
+        await EnsureProjectAdmin(projectId, principal);
+        await tasks.DeleteTasksByProjectAsync(new DeleteTasksByProjectRequest { ProjectId = projectId });
         await projects.DeleteProjectAsync(new DeleteProjectRequest { Id = projectId });
         return Results.NoContent();
     })
@@ -129,9 +141,10 @@ app.MapPost("/api/tasks", async (CreateTaskRequest request, ClaimsPrincipal prin
         var project = await EnsureProjectAccess(request.ProjectId, principal);
 
         request.CreatedById = currentUserId;
-        request.AssigneeId = currentUserId;
+        if (!project.AdminIds.Contains(currentUserId))
+            request.AssigneeId = currentUserId;
 
-        if (request.AssigneeId > 0 && !project.MemberIds.Contains(request.AssigneeId))
+        if (!project.MemberIds.Contains(request.AssigneeId))
             throw new RpcException(new Status(StatusCode.InvalidArgument, "Assignee must be a project member"));
 
         return Results.Ok(await tasks.CreateTaskAsync(request));
@@ -151,8 +164,15 @@ app.MapPost("/api/tasks/{taskId}/assignee", async (int taskId, AssignTaskRequest
     .RequireAuthorization();
 app.MapDelete("/api/tasks/{taskId}", async (int taskId, ClaimsPrincipal principal) =>
     {
+        var currentUserId = CurrentUserId(principal);
         var task = await tasks.GetTaskAsync(new GetTaskRequest { Id = taskId });
-        await EnsureProjectAccess(task.ProjectId, principal);
+        var project = await EnsureProjectAccess(task.ProjectId, principal);
+
+        if (task.CreatedById != currentUserId && !project.AdminIds.Contains(currentUserId))
+            throw new RpcException(new Status(
+                StatusCode.PermissionDenied,
+                "Only task creator or project admin can delete task"));
+
         await tasks.DeleteTaskAsync(new DeleteTaskRequest { Id = taskId });
         return Results.NoContent();
     })
@@ -195,11 +215,13 @@ async Task<ProjectResponse> EnsureProjectAccess(int projectId, ClaimsPrincipal p
     throw new RpcException(new Status(StatusCode.PermissionDenied, "Project access denied"));
 }
 
-async Task EnsureProjectAdmin(int projectId, ClaimsPrincipal principal)
+async Task<ProjectResponse> EnsureProjectAdmin(int projectId, ClaimsPrincipal principal)
 {
     var project = await projects.GetProjectAsync(new GetProjectRequest { Id = projectId });
     if (!project.AdminIds.Contains(CurrentUserId(principal)))
         throw new RpcException(new Status(StatusCode.PermissionDenied, "Insufficient permissions"));
+
+    return project;
 }
 
 async Task EnsureProjectAdminByTask(int taskId, ClaimsPrincipal principal)
