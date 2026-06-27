@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { aiImproveDescription, generateAIDescription, projectApi, taskApi, userApi } from "./api";
+import { aiGenerateSubtasks, aiImproveDescription, generateAIDescription, projectApi, taskApi, userApi } from "./api";
 import type { ProjectRes, TaskRes, UserRes } from "./api";
 
 interface Props { projectId: number; userId: number; onBack: () => void; onDashboard?: () => void; onProjects?: () => void; onProfile?: () => void; onLogout?: () => void }
@@ -19,13 +19,56 @@ function userName(users: UserRes[], userId: number) {
   return users.find(user => user.id === userId)?.username || `User #${userId}`;
 }
 
-function TaskDetailModal({ task, users, onClose }: { task: TaskRes; users: UserRes[]; onClose: () => void }) {
+function TaskDetailModal({ task, users, onClose, projectId, userId }: { task: TaskRes; users: UserRes[]; onClose: () => void; projectId: number; userId: number }) {
   const [aiText, setAiText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [applyLoading, setApplyLoading] = useState(false);
   const [showAi, setShowAi] = useState(false);
+  const [showSubtask, setShowSubtask] = useState(false);
+  const [subtasksLoading, setSubtasksLoading] = useState(false);
+  const [subtaskItems, setSubtaskItems] = useState<{ id: number; title: string; checked: boolean }[]>([]);
+
+  const handleSubtask = async () => {
+    setSubtasksLoading(true);
+    setAiError("");
+    try {
+      const result = await aiGenerateSubtasks(task.title, task.description);
+      const items = result
+        .split("\n")
+        .map(line => line.replace(/^[-*]\s*/, "").trim())
+        .filter(Boolean)
+        .map((title, i) => ({ id: i, title, checked: true }));
+      setSubtaskItems(items);
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : "Failed to generate subtasks");
+    } finally {
+      setSubtasksLoading(false);
+    }
+  };
+
+  const toggleSubtask = (id: number) => {
+    setSubtaskItems(prev => prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+  };
+
+  const updateSubtaskTitle = (id: number, title: string) => {
+    setSubtaskItems(prev => prev.map(item => item.id === id ? { ...item, title } : item));
+  };
+
+  const addSelectedSubtasks = async () => {
+    setAiError("");
+    const selected = subtaskItems.filter(item => item.checked);
+    try {
+      for (const item of selected) {
+        await taskApi.create({ title: item.title, description: "", projectId, createdById: userId, priority: 2 });
+      }
+      setSubtaskItems([]);
+      setShowSubtask(false);
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : "Failed to create subtasks");
+    }
+  };
 
   const handleGenerate = async () => {
     if (!feedback.trim()) return;
@@ -57,8 +100,7 @@ function TaskDetailModal({ task, users, onClose }: { task: TaskRes; users: UserR
   };
 
   return (
-    <div onClick={onClose} className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-      <div onClick={e => e.stopPropagation()} className="modal-content" style={{ background: "#fff", padding: 32, maxWidth: 520, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
+    <div style={{ padding: 24, overflowY: "auto", height: "100%" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 16 }}>
           <h2 style={{ margin: 0 }}>{task.title}</h2>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#999" }}>x</button>
@@ -70,10 +112,15 @@ function TaskDetailModal({ task, users, onClose }: { task: TaskRes; users: UserR
           <span>Assignee: <strong>{userName(users, task.assigneeId)}</strong></span>
         </div>
 
-        {/* Edit description */}
-        <button onClick={() => { setShowAi(!showAi); if (!showAi) setAiText(task.description || ""); }} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, padding: "6px 12px", marginBottom: 12 }}>
-          {showAi ? "Cancel" : "Edit description"}
-        </button>
+        {/* Edit / Subtasks */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <button onClick={() => { setShowAi(!showAi); if (!showAi) setAiText(task.description || ""); }} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, padding: "6px 12px" }}>
+            {showAi ? "Cancel" : "Edit description"}
+          </button>
+          <button onClick={() => { setShowSubtask(!showSubtask); if (!showSubtask) setSubtaskItems([]); }} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, padding: "6px 12px" }}>
+            {showSubtask ? "Cancel" : "Subtasks"}
+          </button>
+        </div>
 
         {aiError && <p style={{ color: "red", fontSize: 13, marginBottom: 8 }}>{aiError}</p>}
 
@@ -96,13 +143,40 @@ function TaskDetailModal({ task, users, onClose }: { task: TaskRes; users: UserR
                 style={{ flex: 1, padding: "8px 10px", border: "1px solid #ddd", fontSize: 13, boxSizing: "border-box" }}
               />
               <button onClick={handleGenerate} disabled={aiLoading || !feedback.trim()} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, whiteSpace: "nowrap" }}>
-                {aiLoading ? "..." : "Generate with AI"}
+                {aiLoading ? "..." : "AI"}
               </button>
             </div>
           </div>
         )}
+
+        {showSubtask && (
+          <div style={{ padding: 12, background: "#fafafa", border: "1px solid #eee", marginBottom: 12 }}>
+            <p style={{ fontSize: 13, color: "#555", marginBottom: 8 }}>
+              AI will split this task into 3-5 smaller subtasks. Select which ones to add to the project.
+            </p>
+            <button onClick={handleSubtask} disabled={subtasksLoading} className="keycap-btn keycap-btn-solid" style={{ fontSize: 12, padding: "6px 14px" }}>
+              {subtasksLoading ? "Generating..." : "Generate with AI"}
+            </button>
+            {subtaskItems.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                {subtaskItems.map(item => (
+                  <div key={item.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 0", borderBottom: "1px solid #eee" }}>
+                    <input type="checkbox" checked={item.checked} onChange={() => toggleSubtask(item.id)} style={{ accentColor: "#222" }} />
+                    <input
+                      value={item.title}
+                      onChange={e => updateSubtaskTitle(item.id, e.target.value)}
+                      style={{ flex: 1, padding: "6px 8px", border: "1px solid #ddd", fontSize: 13, boxSizing: "border-box" }}
+                    />
+                  </div>
+                ))}
+                <button onClick={addSelectedSubtasks} className="keycap-btn keycap-btn-solid" style={{ fontSize: 12, padding: "6px 14px", marginTop: 8 }}>
+                  Add selected ({subtaskItems.filter(i => i.checked).length})
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-    </div>
   );
 }
 
@@ -246,8 +320,14 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
   };
 
   return (
-    <div>
-      {detailTask && <TaskDetailModal task={detailTask} users={users} onClose={() => setDetailTask(null)} />}
+    <div style={{ height: "100vh", overflow: "hidden" }}>
+      {/* Content wrapper */}
+      <div style={{
+        height: "100vh",
+        overflow: "clip",
+        display: "flex",
+        flexDirection: "column",
+      }}>
       {showCreate && (
         <CreateTaskModal
           users={users}
@@ -260,7 +340,7 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
       )}
 
       {/* Navigation */}
-      <div style={{ padding: "24px 24px 16px", borderBottom: "1px solid #eee" }}>
+      <div style={{ padding: "24px 24px 16px", borderBottom: "1px solid #eee", paddingRight: detailTask ? 444 : 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 8 }}>
             {onDashboard && <button onClick={onDashboard} className="keycap-btn keycap-btn-outline">Home</button>}
@@ -357,28 +437,38 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
         </div>
       )}
 
-      {/* Content */}
-      <div style={{ padding: 24 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <button onClick={onBack} className="back-btn keycap-btn keycap-btn-ghost" style={{ padding: "6px 12px", fontSize: 14 }}>Back to Projects</button>
-          <div style={{ display: "flex", gap: 8 }}>
-            {project?.adminIds.includes(userId) && (
-              <button onClick={() => setMembersProject(project)} className="keycap-btn keycap-btn-outline" style={{ fontSize: 13 }}>
-                Invite
-              </button>
-            )}
-            <button onClick={() => setShowCreate(true)} className="keycap-btn keycap-btn-solid">+ New Task</button>
-          </div>
+      {/* Back / Invite / New Task — static, slide left */}
+      <div style={{ padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", paddingRight: detailTask ? 444 : 24 }}>
+        <button onClick={onBack} className="back-btn keycap-btn keycap-btn-ghost" style={{ padding: "6px 12px", fontSize: 14 }}>Back to Projects</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {project?.adminIds.includes(userId) && (
+            <button onClick={() => setMembersProject(project)} className="keycap-btn keycap-btn-outline" style={{ fontSize: 13 }}>
+              Invite
+            </button>
+          )}
+          <button onClick={() => setShowCreate(true)} className="keycap-btn keycap-btn-solid">+ New Task</button>
         </div>
+      </div>
 
-        {statusError && <p style={{ color: "red", fontSize: 14, marginBottom: 12 }}>{statusError}</p>}
+      {statusError && <p style={{ color: "red", fontSize: 14, marginBottom: 12, padding: "0 24px" }}>{statusError}</p>}
 
-        <div style={{ display: "flex", gap: 16, overflowX: "auto" }}>
+      {/* Columns area — scales when panel opens */}
+      <div style={{ flex: 1, minHeight: 0, overflow: detailTask ? "hidden" : "", padding: "0 24px 32px" }}>
+      <div style={{
+        height: detailTask ? "calc(100% / 0.72)" : "100%",
+        display: "flex",
+        flexDirection: "column",
+        maxWidth: detailTask ? "calc((100vw - 420px) / 0.755)" : "100%",
+        transform: detailTask ? "scale(0.72)" : "scale(1)",
+        transformOrigin: "left top",
+        transition: "transform 0.15s ease, max-width 0.15s ease",
+      }}>
+        <div style={{ display: "flex", gap: 16, overflowX: "auto", flex: 1, minHeight: 0 }}>
           {columns.map(col => (
-            <div key={col.key} onDragOver={e => e.preventDefault()} onDrop={e => onDrop(e, col.key)} style={{ minWidth: 250, flex: 1, background: "#f5f5f5", padding: 12 }}>
+            <div key={col.key} onDragOver={e => e.preventDefault()} onDrop={e => onDrop(e, col.key)} style={{ flex: "1 1 0%", minWidth: 180, background: "#f5f5f5", padding: "12px 12px 32px", overflowY: "auto" }}>
               <h3 style={{ margin: "0 0 12px", fontSize: 15, color: "#555" }}>{col.title}</h3>
               {tasks.filter(t => t.status === col.key).map(t => (
-                <div key={t.id} draggable onDragStart={e => onDragStart(e, t.id)} onClick={() => setDetailTask(t)} onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, task: t }); }} style={{ padding: 12, marginBottom: 8, background: "#fff", border: "1px solid #e0e0e0", cursor: "pointer", boxShadow: "0 2px 0 #d0d0d0, 0 1px 3px rgba(0,0,0,0.04)" }}>
+                <div key={t.id} draggable onDragStart={e => onDragStart(e, t.id)} onClick={() => setDetailTask(detailTask?.id === t.id ? null : t)} onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, task: t }); }} style={{ padding: 12, marginBottom: 8, background: "#fff", border: "1px solid #e0e0e0", cursor: "pointer", boxShadow: "0 2px 0 #d0d0d0, 0 1px 3px rgba(0,0,0,0.04)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <strong style={{ fontSize: 14 }}>{t.title}</strong>
                     <span style={{ fontSize: 11, padding: "2px 6px", background: priorityColors[t.priority] || "#999", color: "#fff" }}>{priorityLabels[t.priority] || "?"}</span>
@@ -401,6 +491,15 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
           ))}
         </div>
       </div>
-    </div>
+      </div>
+      </div>
+
+      {/* Side panel for task details */}
+      {detailTask && (
+        <div style={{ position: "fixed", top: 0, right: 0, width: 420, height: "100vh", borderLeft: "1px solid #e0e0e0", overflowY: "auto", background: "#fff", zIndex: 100, boxShadow: "-4px 0 12px rgba(0,0,0,0.06)" }}>
+          <TaskDetailModal task={detailTask} users={users} projectId={projectId} userId={userId} onClose={() => setDetailTask(null)} />
+        </div>
+      )}
+      </div>
   );
 }
