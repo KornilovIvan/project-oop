@@ -1,9 +1,21 @@
+import { useState } from "react";
+import { getApiKey, setApiKey } from "./api";
+
 interface Props { username: string; email: string; onBack: () => void; onLogout: () => void; onDashboard?: () => void; onProjects?: () => void }
 
 export function ProfilePage({ username, email, onBack, onLogout, onDashboard, onProjects }: Props) {
+  const [apiKey, setKey] = useState(getApiKey());
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = () => {
+    setApiKey(apiKey);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
   return (
     <div>
-      {/* Navigation — full width */}
+      {/* Navigation */}
       <div style={{ padding: "24px 24px 16px", borderBottom: "1px solid #eee" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 8 }}>
@@ -28,10 +40,33 @@ export function ProfilePage({ username, email, onBack, onLogout, onDashboard, on
             <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>USERNAME</div>
             <div style={{ fontSize: 16 }}>{username}</div>
           </div>
-          <div style={{ marginBottom: 24, padding: "12px 16px", background: "#fff", border: "1px solid #e0e0e0" }}>
+          <div style={{ marginBottom: 16, padding: "12px 16px", background: "#fff", border: "1px solid #e0e0e0" }}>
             <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>EMAIL</div>
             <div style={{ fontSize: 16 }}>{email}</div>
           </div>
+
+          {/* API Key section */}
+          <div style={{ marginBottom: 24, padding: "12px 16px", background: "#fff", border: "1px solid #e0e0e0" }}>
+            <div style={{ fontSize: 12, color: "#999", marginBottom: 8 }}>API KEY (for AI features)</div>
+            <input
+              type="password"
+              placeholder="sk-..."
+              value={apiKey}
+              onChange={e => { setKey(e.target.value); setSaved(false); }}
+              style={{ width: "100%", padding: "10px 12px", marginBottom: 8, border: "1px solid #ddd", fontSize: 14, boxSizing: "border-box" }}
+            />
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button onClick={handleSave} className="keycap-btn keycap-btn-solid" style={{ padding: "6px 16px", fontSize: 13 }}>
+                {saved ? "Saved ✓" : "Save key"}
+              </button>
+              {apiKey && (
+                <span style={{ fontSize: 12, color: "#999" }}>
+                  Key is stored in your browser only
+                </span>
+              )}
+            </div>
+          </div>
+
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={onBack} className="keycap-btn keycap-btn-ghost" style={{ flex: 1 }}>← Back</button>
             <button onClick={onLogout} className="keycap-btn keycap-btn-solid" style={{ flex: 1, padding: "10px 0", fontSize: 15 }}>Logout</button>

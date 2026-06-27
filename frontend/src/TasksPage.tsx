@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { projectApi, taskApi, userApi } from "./api";
+import { generateAIDescription, projectApi, taskApi, userApi } from "./api";
 import type { ProjectRes, TaskRes, UserRes } from "./api";
 
 interface Props { projectId: number; userId: number; onBack: () => void; onDashboard?: () => void; onProjects?: () => void; onProfile?: () => void; onLogout?: () => void }
@@ -58,12 +58,27 @@ function CreateTaskModal({
   const [priority, setPriority] = useState(2);
   const [assigneeId, setAssigneeId] = useState(currentUserId);
   const [error, setError] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
   const memberUsers = users.filter(user => project?.memberIds.includes(user.id));
 
   const handleCreate = async () => {
     if (!title) { setError("Title is required"); return; }
     try { setError(""); await onCreate(title, description, priority, assigneeId); onClose(); }
     catch (e: unknown) { setError(e instanceof Error ? e.message : "Failed to create task"); }
+  };
+
+  const handleAiGenerate = async () => {
+    if (!title.trim()) { setError("Enter a title first"); return; }
+    setAiLoading(true);
+    setError("");
+    try {
+      const desc = await generateAIDescription(title);
+      setDescription(desc);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "AI generation failed");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   return (
@@ -74,7 +89,12 @@ function CreateTaskModal({
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#999" }}>x</button>
         </div>
         <input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} autoFocus style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }} />
-        <input placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }} />
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <input placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} style={{ flex: 1, padding: "10px 12px", border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }} />
+          <button onClick={handleAiGenerate} disabled={aiLoading} className="keycap-btn keycap-btn-outline" style={{ whiteSpace: "nowrap", fontSize: 13 }}>
+            {aiLoading ? "..." : "Generate"}
+          </button>
+        </div>
         <select value={priority} onChange={e => setPriority(Number(e.target.value))} style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }}>
           <option value={1}>Low</option><option value={2}>Medium</option><option value={3}>High</option><option value={4}>Critical</option>
         </select>

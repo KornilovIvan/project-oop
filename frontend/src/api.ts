@@ -5,6 +5,47 @@ export function setAccessToken(token: string | null) {
   else localStorage.removeItem("accessToken");
 }
 
+export function getApiKey(): string {
+  return localStorage.getItem("apiKey") || "";
+}
+
+export function setApiKey(key: string) {
+  if (key) localStorage.setItem("apiKey", key);
+  else localStorage.removeItem("apiKey");
+}
+
+export async function generateAIDescription(title: string): Promise<string> {
+  const key = getApiKey();
+  if (!key) throw new Error("API key not set. Add it in Profile.");
+
+  const res = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      messages: [
+        {
+          role: "user",
+          content: `Напиши короткое описание задачи (2-3 предложения) на русском языке для: "${title}". Ответь только описанием, без лишнего текста.`,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 150,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.error?.message || `API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || "No description generated.";
+}
+
 async function req<T>(url: string, body?: unknown, method?: string): Promise<T> {
   const requestMethod = method || (body ? "POST" : "GET");
   const r = await fetch(BASE + url, {
