@@ -1,24 +1,8 @@
 import { useEffect, useState } from "react";
-import { getAllTasks, taskApi } from "./api";
-import type { TaskWithProject } from "./api";
-
-interface Props {
-  userId: number;
-  onSelectProject: (projectId: number) => void;
-  onProjects: () => void;
-  onProfile: () => void;
-  onLogout: () => void;
-}
-
-const columns = [
-  { key: 1, title: "To Do" },
-  { key: 2, title: "In Progress" },
-  { key: 3, title: "Review" },
-  { key: 4, title: "Done" },
-];
-
-const priorityLabels: Record<number, string> = { 1: "Low", 2: "Medium", 3: "High", 4: "Critical" };
-const priorityColors: Record<number, string> = { 1: "#d4d4d4", 2: "#c0c0c0", 3: "#a8a8a8", 4: "#888888" };
+import { getAllTasks, taskApi, userApi } from "./api";
+import type { TaskWithProject, UserRes } from "./api";
+import { columns, priorityLabels, priorityColors } from "./taskConstants";
+import { TaskDetailModal } from "./TaskDetailPanel";
 
 const projectPalette = [
   { bg: "#f5ecec", border: "#dbb5b5" },
@@ -33,28 +17,20 @@ const projectPalette = [
   { bg: "#ecf5f0", border: "#b5dbc8" },
 ];
 
+interface Props {
+  userId: number;
+  onSelectProject: (projectId: number) => void;
+  onProjects: () => void;
+  onProfile: () => void;
+  onLogout: () => void;
+}
+
 export function DashboardPage({ userId, onSelectProject, onProjects, onProfile, onLogout }: Props) {
   const [tasks, setTasks] = useState<TaskWithProject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
-  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(new Set());
   const [statusError, setStatusError] = useState("");
-
-  const toggleTask = (id: number) => {
-    setExpandedTasks(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
-  const toggleProject = (name: string) => {
-    setCollapsedProjects(prev => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name); else next.add(name);
-      return next;
-    });
-  };
+  const [detailTask, setDetailTask] = useState<TaskWithProject | null>(null);
+  const [users, setUsers] = useState<UserRes[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -69,6 +45,9 @@ export function DashboardPage({ userId, onSelectProject, onProjects, onProfile, 
   };
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    userApi.list().then(setUsers).catch(e => setStatusError(e instanceof Error ? e.message : "Failed to load users"));
+  }, []);
 
   const changeStatus = async (taskId: number, status: number) => {
     try {
@@ -93,9 +72,9 @@ export function DashboardPage({ userId, onSelectProject, onProjects, onProfile, 
   };
 
   return (
-    <div>
-      {/* Navigation */}
-      <div style={{ padding: "24px 24px 16px", borderBottom: "1px solid #eee" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+      {/* Navigation — shifts left when panel opens */}
+      <div style={{ padding: "24px 24px 16px", paddingRight: detailTask ? 444 : 24, borderBottom: "1px solid #eee", transition: "padding-right 0.15s ease" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="keycap-btn keycap-btn-solid" style={{ cursor: "default" }}>Home</button>
@@ -108,108 +87,99 @@ export function DashboardPage({ userId, onSelectProject, onProjects, onProfile, 
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{ padding: 24 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 4 }}>
-          <h2 style={{ margin: 0 }}>Dashboard</h2>
-          {!loading && tasks.length > 0 && (
-            <button onClick={() => setCollapsedProjects(collapsedProjects.size > 0 ? new Set() : new Set([...new Set(tasks.map(t => t.projectName))]))} className="keycap-btn keycap-btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }}>
-              {collapsedProjects.size > 0 ? "Expand all" : "Collapse all"}
-            </button>
-          )}
-        </div>
-        <p style={{ margin: "0 0 16px", color: "#999", fontSize: 14 }}>All tasks across all projects</p>
-
-        {statusError && <p style={{ color: "red", fontSize: 14, marginBottom: 12 }}>{statusError}</p>}
-
-        {loading ? (
-          <p style={{ color: "#999", textAlign: "center", marginTop: 40 }}>Loading tasks...</p>
-        ) : tasks.length === 0 ? (
-          <p style={{ color: "#999", textAlign: "center", marginTop: 40 }}>No tasks yet. Create one in a project.</p>
-        ) : (
-          <div style={{ display: "flex", gap: 16, overflowX: "auto" }}>
-            {(() => {
-              const allProjectNames = [...new Set(tasks.map(t => t.projectName))];
-              const projectColorMap = new Map<string, (typeof projectPalette)[number]>();
-              allProjectNames.forEach((name, i) => {
-                projectColorMap.set(name, projectPalette[i % projectPalette.length]);
-              });
-
-              return columns.map(col => {
-                const colTasks = tasks.filter(t => t.status === col.key);
-                const groups = new Map<string, TaskWithProject[]>();
-                colTasks.forEach(t => {
-                  const g = groups.get(t.projectName) || [];
-                  g.push(t);
-                  groups.set(t.projectName, g);
-                });
-                const projectNames = [...groups.keys()];
-                return (
-                  <div key={col.key} onDragOver={e => e.preventDefault()} onDrop={e => onDrop(e, col.key)} style={{ minWidth: 280, flex: 1, background: "#f5f5f5", padding: 12 }}>
-                    <h3 style={{ margin: "0 0 12px", fontSize: 15, color: "#111" }}>{col.title} ({colTasks.length})</h3>
-                    {projectNames.map(pname => {
-                      const isCollapsed = collapsedProjects.has(pname);
-                      const color = projectColorMap.get(pname)!;
-                      return (
-                        <div key={pname} style={{ marginBottom: 12, background: color.bg, borderLeft: `4px solid ${color.border}`, padding: 8 }}>
-                          <div
-                            onClick={() => toggleProject(pname)}
-                            style={{ fontSize: 12, fontWeight: "bold", color: "#111", marginBottom: isCollapsed ? 0 : 6, padding: "0 4px", cursor: "pointer", userSelect: "none" }}
-                          >
-                            {isCollapsed ? "+ " : "- "}{pname} ({groups.get(pname)!.length})
-                          </div>
-                          {!isCollapsed && groups.get(pname)!.map(t => {
-                            const isExpanded = expandedTasks.has(t.id);
-                            return (
-                              <div key={t.id} style={{ animation: "fadeSlideIn 0.2s ease" }}>
-                                <div
-                                  draggable
-                                  onDragStart={e => onDragStart(e, t.id)}
-                                  onClick={() => toggleTask(t.id)}
-                                  className="keycap-card"
-                                >
-                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <strong style={{ fontSize: 14 }}>{t.title}</strong>
-                                    <span style={{ fontSize: 11, padding: "2px 6px", background: priorityColors[t.priority] || "#999", color: "#fff" }}>{priorityLabels[t.priority] || "?"}</span>
-                                  </div>
-
-                                  {t.description && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#888" }}>{t.description}</p>}
-
-                                  <div className={`expand-wrap ${isExpanded ? "open" : ""}`}>
-                                    <div>
-                                      <div style={{ marginTop: 8, fontSize: 13, color: "#555" }}>
-                                        <div style={{ display: "flex", gap: 16, color: "#888", marginBottom: 6 }}>
-                                          <span>Priority: <strong>{priorityLabels[t.priority] || "?"}</strong></span>
-                                          <span>Status: <strong>{columns.find(c => c.key === t.status)?.title || "?"}</strong></span>
-                                        </div>
-                                        <div style={{ marginBottom: 8 }}>
-                                          Project:{" "}
-                                          <a
-                                            href="#"
-                                            onClick={e => { e.preventDefault(); onSelectProject(t.projectId); }}
-                                            style={{ color: "#222", textDecoration: "underline", textUnderlineOffset: 2 }}
-                                          >
-                                            {t.projectName}
-                                          </a>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
-                    {projectNames.length === 0 && <p style={{ color: "#ccc", textAlign: "center", fontSize: 13 }}>-</p>}
-                  </div>
-                );
-              });
-            })()}
-          </div>
-        )}
+      {/* Header */}
+      <div style={{ padding: "16px 24px 0" }}>
+        <h2 style={{ margin: 0 }}>Dashboard</h2>
+        <p style={{ margin: "4px 0 0", color: "#999", fontSize: 14 }}>My tasks across all projects</p>
+        {statusError && <p style={{ color: "red", fontSize: 14, marginTop: 8 }}>{statusError}</p>}
       </div>
+
+      {/* Columns area — scales when panel opens */}
+      {loading ? (
+        <p style={{ color: "#999", textAlign: "center", marginTop: 40 }}>Loading tasks...</p>
+      ) : tasks.length === 0 ? (
+        <p style={{ color: "#999", textAlign: "center", marginTop: 40 }}>No tasks assigned to you yet.</p>
+      ) : (
+        <div style={{ flex: 1, minHeight: 0, overflow: detailTask ? "hidden" : "", padding: "16px 24px 32px" }}>
+        <div style={{
+          height: detailTask ? "calc(100% / 0.72)" : "100%",
+          display: "flex",
+          flexDirection: "column",
+          maxWidth: detailTask ? "calc((100vw - 420px) / 0.755)" : "100%",
+          transform: detailTask ? "scale(0.72)" : "scale(1)",
+          transformOrigin: "left top",
+          transition: "transform 0.15s ease, max-width 0.15s ease",
+        }}>
+        {(() => {
+          const allProjectNames = [...new Set(tasks.map(t => t.projectName))];
+          const globalColorMap = new Map<string, (typeof projectPalette)[number]>();
+          allProjectNames.forEach((name, i) => globalColorMap.set(name, projectPalette[i % projectPalette.length]));
+          return (
+        <div style={{ display: "flex", gap: 16, overflowX: "auto", flex: 1, minHeight: 0 }}>
+          {columns.map(col => {
+            const colTasks = tasks.filter(t => t.status === col.key);
+            const groups = new Map<string, TaskWithProject[]>();
+            colTasks.forEach(t => {
+              const g = groups.get(t.projectName) || [];
+              g.push(t);
+              groups.set(t.projectName, g);
+            });
+            const projectNames = [...groups.keys()];
+            const colorMap = new Map<string, (typeof projectPalette)[number]>();
+            allProjectNames.forEach(name => {
+              if (groups.has(name)) colorMap.set(name, globalColorMap.get(name)!);
+            });
+            return (
+              <div key={col.key} onDragOver={e => e.preventDefault()} onDrop={e => onDrop(e, col.key)} style={{ flex: "1 1 0%", minWidth: 180, background: "#f5f5f5", padding: "12px 12px 0", display: "flex", flexDirection: "column" }}>
+                <h3 style={{ margin: "0 0 12px", fontSize: 15, color: "#000", flexShrink: 0 }}>{col.title} ({colTasks.length})</h3>
+                <div style={{ overflowY: "auto", flex: 1, paddingBottom: 32 }}>
+                {projectNames.map(pname => {
+                  const color = colorMap.get(pname)!;
+                  return (
+                    <div key={pname} style={{ marginBottom: 12, background: color.bg, borderLeft: `4px solid ${color.border}`, padding: 8 }}>
+                      <div style={{ fontSize: 12, fontWeight: "bold", color: "#111", marginBottom: 6, padding: "0 4px" }}>
+                        {pname} ({groups.get(pname)!.length})
+                      </div>
+                      {groups.get(pname)!.map(t => (
+                        <div key={t.id} draggable onDragStart={e => onDragStart(e, t.id)} onClick={() => setDetailTask(detailTask?.id === t.id ? null : t)} className="keycap-card" style={{ padding: 12, marginBottom: 8 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <strong style={{ fontSize: 14 }}>{t.title}</strong>
+                            <span style={{ fontSize: 11, padding: "2px 6px", background: priorityColors[t.priority] || "#999", color: "#fff" }}>{priorityLabels[t.priority] || "?"}</span>
+                          </div>
+                          {t.description && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#888" }}>{t.description}</p>}
+                          <div style={{ marginTop: 8, fontSize: 12, color: "#777" }}>
+                            Project:{" "}
+                            <a
+                              href="#"
+                              onClick={e => { e.preventDefault(); e.stopPropagation(); onSelectProject(t.projectId); }}
+                              style={{ color: "#222", textDecoration: "underline", textUnderlineOffset: 2 }}
+                            >
+                              {t.projectName}
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+                </div>
+                {projectNames.length === 0 && <p style={{ color: "#ccc", textAlign: "center", fontSize: 13 }}>-</p>}
+              </div>
+            );
+          })}
+        </div>
+          );
+        })()}
+        </div>
+        </div>
+      )}
+
+      {/* Side panel */}
+      {detailTask && (
+        <div style={{ position: "fixed", top: 0, right: 0, width: 420, height: "100vh", borderLeft: "1px solid #e0e0e0", overflowY: "auto", background: "#fff", zIndex: 100, boxShadow: "-4px 0 12px rgba(0,0,0,0.06)" }}>
+          <TaskDetailModal task={detailTask} users={users} projectId={detailTask.projectId} userId={userId} onClose={() => setDetailTask(null)} />
+        </div>
+      )}
     </div>
   );
 }

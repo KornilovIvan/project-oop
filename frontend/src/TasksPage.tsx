@@ -302,6 +302,11 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
         transformOrigin: "left top",
         transition: "transform 0.15s ease, max-width 0.15s ease",
       }}>
+        {(() => {
+          const allAssigneeIds = [...new Set(tasks.map(t => t.assigneeId))];
+          const globalColorMap = new Map<number, (typeof userPalette)[number]>();
+          allAssigneeIds.forEach((id, i) => globalColorMap.set(id, userPalette[i % userPalette.length]));
+          return (
         <div style={{ display: "flex", gap: 16, overflowX: "auto", flex: 1, minHeight: 0 }}>
           {columns.map(col => {
             const colTasks = tasks.filter(t => t.status === col.key);
@@ -313,10 +318,13 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
             });
             const assigneeIds = [...groups.keys()];
             const colorMap = new Map<number, (typeof userPalette)[number]>();
-            assigneeIds.forEach((id, i) => colorMap.set(id, userPalette[i % userPalette.length]));
+            allAssigneeIds.forEach(id => {
+              if (groups.has(id)) colorMap.set(id, globalColorMap.get(id)!);
+            });
             return (
-              <div key={col.key} onDragOver={e => e.preventDefault()} onDrop={e => onDrop(e, col.key)} style={{ flex: "1 1 0%", minWidth: 180, background: "#f5f5f5", padding: "12px 12px 32px", overflowY: "auto" }}>
-                <h3 style={{ margin: "0 0 12px", fontSize: 15, color: "#000" }}>{col.title} ({colTasks.length})</h3>
+              <div key={col.key} onDragOver={e => e.preventDefault()} onDrop={e => onDrop(e, col.key)} style={{ flex: "1 1 0%", minWidth: 180, background: "#f5f5f5", padding: "12px 12px 0", display: "flex", flexDirection: "column" }}>
+                <h3 style={{ margin: "0 0 12px", fontSize: 15, color: "#000", flexShrink: 0 }}>{col.title} ({colTasks.length})</h3>
+                <div style={{ overflowY: "auto", flex: 1, paddingBottom: 32 }}>
                 {assigneeIds.map(aid => {
                   const color = colorMap.get(aid)!;
                   return (
@@ -347,10 +355,13 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
                     </div>
                   );
                 })}
+                </div>
               </div>
             );
           })}
         </div>
+          );
+        })()}
       </div>
       </div>
       </div>
