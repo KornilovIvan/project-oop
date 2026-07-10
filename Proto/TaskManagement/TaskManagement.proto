@@ -28,6 +28,7 @@ service ProjectService {
   rpc ListInvitations (ListInvitationsRequest) returns (ListInvitationsResponse);
   rpc AcceptInvitation (AcceptInvitationRequest) returns (ProjectResponse);
   rpc RejectInvitation (RejectInvitationRequest) returns (google.protobuf.Empty);
+  rpc ListProjectInvitations (ListProjectInvitationsRequest) returns (ListProjectInvitationsResponse);
 }
 
 service TaskService {
@@ -151,6 +152,14 @@ message RejectInvitationRequest {
   int32 invitation_id = 1;
 }
 
+message ListProjectInvitationsRequest {
+  int32 project_id = 1;
+}
+
+message ListProjectInvitationsResponse {
+  repeated int32 user_ids = 1;
+}
+
 message CreateTaskRequest {
   string title = 1;
   string description = 2;
@@ -211,6 +220,7 @@ message ProjectResponse {
   int32 created_by_id = 4;
   repeated int32 member_ids = 5;
   repeated int32 admin_ids = 6;
+  repeated int32 invited_user_ids = 7;
 }
 
 message TaskResponse {

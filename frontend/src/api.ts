@@ -160,6 +160,7 @@ export type ProjectRes = {
   createdById: number;
   memberIds: number[];
   adminIds: number[];
+  invitedUserIds: number[];
 }
 export type TaskRes = { id: number; title: string; description: string; projectId: number; assigneeId: number; status: number; priority: number; createdById: number }
 
@@ -204,6 +205,7 @@ export const projectApi = {
   inviteMember: (projectId: number, userId: number) =>
     req<InvitationRes>(`/projects/${projectId}/invitations`, { userId }),
   listInvitations: () => req<InvitationRes[]>("/invitations"),
+  listProjectInvitations: (projectId: number) => req<number[]>(`/projects/${projectId}/invitations`),
   acceptInvitation: (invitationId: number) =>
     req<ProjectRes>(`/invitations/${invitationId}/accept`, {}),
   rejectInvitation: (invitationId: number) =>

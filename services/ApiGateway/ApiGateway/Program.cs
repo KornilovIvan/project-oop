@@ -147,6 +147,12 @@ app.MapGet("/api/invitations", async (ClaimsPrincipal principal) =>
         return Results.Ok((await projects.ListInvitationsAsync(new ListInvitationsRequest { UserId = userId })).Invitations);
     })
     .RequireAuthorization();
+app.MapGet("/api/projects/{projectId}/invitations", async (int projectId, ClaimsPrincipal principal) =>
+    {
+        await EnsureProjectAccess(projectId, principal);
+        return Results.Ok((await projects.ListProjectInvitationsAsync(new ListProjectInvitationsRequest { ProjectId = projectId })).UserIds);
+    })
+    .RequireAuthorization();
 app.MapPost("/api/invitations/{invitationId}/accept", async (int invitationId, ClaimsPrincipal principal) =>
     {
         var userId = CurrentUserId(principal);

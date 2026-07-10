@@ -20,7 +20,6 @@ function MembersModal({
 }) {
   const [busyUserId, setBusyUserId] = useState<number | null>(null);
   const members = users.filter(user => project.memberIds.includes(user.id));
-  const available = users.filter(user => !project.memberIds.includes(user.id));
 
   const run = async (userId: number, action: (userId: number) => Promise<void>) => {
     setBusyUserId(userId);
@@ -58,8 +57,19 @@ function MembersModal({
           </div>
 
           <div>
-            <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "#666" }}>Available users</h4>
-            {available.map(user => (
+            <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "#666" }}>Pending invitations</h4>
+            {project.invitedUserIds.length > 0 ? users.filter(u => project.invitedUserIds.includes(u.id)).map(user => (
+              <div key={user.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #eee" }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{user.username}</div>
+                  <div style={{ fontSize: 12, color: "#888" }}>{user.email}</div>
+                </div>
+                <span style={{ fontSize: 12, color: "#888" }}>Invited</span>
+              </div>
+            )) : <p style={{ color: "#999", fontSize: 13 }}>No pending invitations.</p>}
+
+            <h4 style={{ margin: "12px 0 8px", fontSize: 13, color: "#666" }}>Available users</h4>
+            {users.filter(u => !project.memberIds.includes(u.id) && !project.invitedUserIds.includes(u.id)).map(user => (
               <div key={user.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #eee" }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{user.username}</div>
@@ -68,7 +78,7 @@ function MembersModal({
                 <button disabled={busyUserId === user.id} onClick={() => run(user.id, onAdd)} className="keycap-btn keycap-btn-outline" style={{ padding: "4px 10px", fontSize: 12 }}>Add</button>
               </div>
             ))}
-            {available.length === 0 && <p style={{ color: "#999", fontSize: 13 }}>Everyone is already added.</p>}
+            {users.filter(u => !project.memberIds.includes(u.id) && !project.invitedUserIds.includes(u.id)).length === 0 && <p style={{ color: "#999", fontSize: 13 }}>All users are added or invited.</p>}
           </div>
         </div>
       </div>
@@ -115,9 +125,8 @@ export function ProjectsPage({ userId, onSelectProject, onLogout, onProfile, onD
 
   const addMember = async (projectId: number, memberId: number) => {
     await projectApi.inviteMember(projectId, memberId);
-    // Reload project to show pending state
     const updated = await projectApi.get(projectId);
-    setProjects(prev => prev.map(project => project.id === updated.id ? updated : project));
+    setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
     setMembersProject(updated);
   };
 
@@ -166,6 +175,7 @@ export function ProjectsPage({ userId, onSelectProject, onLogout, onProfile, onD
           onRemove={memberId => removeMember(membersProject.id, memberId)}
         />
       )}
+
       {showModal && (
         <div onClick={() => setShowModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "#fff", padding: 32, maxWidth: 450, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>

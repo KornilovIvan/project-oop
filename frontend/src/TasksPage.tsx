@@ -186,7 +186,8 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
             {onDashboard && <button onClick={onDashboard} className="keycap-btn keycap-btn-outline">Home</button>}
             {onProjects && <button onClick={onProjects} className="keycap-btn keycap-btn-outline">My Projects</button>}
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <NotificationBell onAccept={onDashboard ?? (() => {})} />
             {onProfile && <button onClick={onProfile} className="keycap-btn keycap-btn-outline">Profile</button>}
             {onLogout && <button onClick={onLogout} className="keycap-btn keycap-btn-ghost">Logout</button>}
           </div>
@@ -231,10 +232,24 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
               {users.filter(u => membersProject.memberIds.includes(u.id)).length === 0 && <p style={{ color: "#999", fontSize: 13 }}>No members yet.</p>}
             </div>
 
+            {/* Pending invitations — always visible */}
+            <div style={{ marginTop: 12 }}>
+              <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "#666" }}>Pending invitations</h4>
+              {membersProject.invitedUserIds.length > 0 ? users.filter(u => membersProject.invitedUserIds.includes(u.id)).map(user => (
+                <div key={user.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #eee" }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{user.username}</div>
+                    <div style={{ fontSize: 12, color: "#888" }}>{user.email}</div>
+                  </div>
+                  <span style={{ fontSize: 12, color: "#888" }}>Invited</span>
+                </div>
+              )) : <p style={{ color: "#999", fontSize: 13 }}>No pending invitations.</p>}
+            </div>
+
             {searchQuery.trim() && (
               <div style={{ marginTop: 12 }}>
                 <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "#666" }}>Search results</h4>
-                {users.filter(u => !membersProject.memberIds.includes(u.id) && (u.username.toLowerCase().includes(searchQuery.toLowerCase()) || u.email.toLowerCase().includes(searchQuery.toLowerCase()))).map(user => (
+                {users.filter(u => !membersProject.memberIds.includes(u.id) && !membersProject.invitedUserIds.includes(u.id) && (u.username.toLowerCase().includes(searchQuery.toLowerCase()) || u.email.toLowerCase().includes(searchQuery.toLowerCase()))).map(user => (
                   <div key={user.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #eee" }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600 }}>{user.username}</div>
@@ -243,14 +258,16 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
                     <button onClick={async () => {
                       try {
                         await projectApi.inviteMember(membersProject.id, user.id);
-                        alert("Invitation sent to " + user.username);
+                        const updated = await projectApi.get(membersProject.id);
+                        setMembersProject(updated);
+                        if (project?.id === updated.id) setProject(updated);
                       } catch (err) {
                         alert(err instanceof Error ? err.message : "Failed");
                       }
                     }} className="keycap-btn keycap-btn-outline" style={{ padding: "4px 10px", fontSize: 12 }}>Invite</button>
                   </div>
                 ))}
-                {users.filter(u => !membersProject.memberIds.includes(u.id) && (u.username.toLowerCase().includes(searchQuery.toLowerCase()) || u.email.toLowerCase().includes(searchQuery.toLowerCase()))).length === 0 && <p style={{ color: "#999", fontSize: 13 }}>No users found.</p>}
+                {users.filter(u => !membersProject.memberIds.includes(u.id) && !membersProject.invitedUserIds.includes(u.id) && (u.username.toLowerCase().includes(searchQuery.toLowerCase()) || u.email.toLowerCase().includes(searchQuery.toLowerCase()))).length === 0 && <p style={{ color: "#999", fontSize: 13 }}>No users found.</p>}
               </div>
             )}
           </div>
@@ -279,7 +296,6 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
       <div style={{ padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", paddingRight: detailTask ? 444 : 24 }}>
         <button onClick={onBack} className="back-btn keycap-btn keycap-btn-ghost" style={{ padding: "6px 12px", fontSize: 14 }}>Back to Projects</button>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <NotificationBell onAccept={onDashboard ?? (() => {})} />
           {project?.adminIds.includes(userId) && (
             <button onClick={() => setMembersProject(project)} className="keycap-btn keycap-btn-outline" style={{ fontSize: 13 }}>
               Invite

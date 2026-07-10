@@ -18,7 +18,7 @@ public class ProjectHandler(ProjectLogic projects) : TaskManagement.Grpc.Project
             request.CreatedById,
             context.CancellationToken);
 
-        return ToProto(project);
+        return await ToProto(project);
     }
 
     public override async Task<ProjectResponse> GetProject(
@@ -26,7 +26,7 @@ public class ProjectHandler(ProjectLogic projects) : TaskManagement.Grpc.Project
         ServerCallContext context)
     {
         var project = await projects.Get(request.Id, context.CancellationToken);
-        return ToProto(project);
+        return await ToProto(project);
     }
 
     public override async Task<ListProjectsResponse> ListProjects(
@@ -37,7 +37,7 @@ public class ProjectHandler(ProjectLogic projects) : TaskManagement.Grpc.Project
         var response = new ListProjectsResponse();
 
         foreach (var project in projectList)
-            response.Projects.Add(ToProto(project));
+            response.Projects.Add(await ToProto(project));
 
         return response;
     }
@@ -51,7 +51,7 @@ public class ProjectHandler(ProjectLogic projects) : TaskManagement.Grpc.Project
             request.UserId,
             context.CancellationToken);
 
-        return ToProto(project);
+        return await ToProto(project);
     }
 
     public override async Task<Empty> RemoveMember(
@@ -107,7 +107,7 @@ public class ProjectHandler(ProjectLogic projects) : TaskManagement.Grpc.Project
             request.InvitationId,
             request.UserId,
             context.CancellationToken);
-        return ToProto(project);
+        return await ToProto(project);
     }
 
     public override async Task<Empty> RejectInvitation(
@@ -118,7 +118,17 @@ public class ProjectHandler(ProjectLogic projects) : TaskManagement.Grpc.Project
         return new Empty();
     }
 
-    private static ProjectResponse ToProto(Project project)
+    public override async Task<ListProjectInvitationsResponse> ListProjectInvitations(
+        ListProjectInvitationsRequest request,
+        ServerCallContext context)
+    {
+        var userIds = await projects.ListProjectInvitations(request.ProjectId, context.CancellationToken);
+        var response = new ListProjectInvitationsResponse();
+        response.UserIds.AddRange(userIds);
+        return response;
+    }
+
+    private async Task<ProjectResponse> ToProto(Project project)
     {
         var response = new ProjectResponse
         {
@@ -131,6 +141,9 @@ public class ProjectHandler(ProjectLogic projects) : TaskManagement.Grpc.Project
         response.AdminIds.AddRange(project.Members
             .Where(member => member.Role == "admin")
             .Select(member => member.UserId));
+
+        var invitedIds = await projects.ListProjectInvitations(project.Id, CancellationToken.None);
+        response.InvitedUserIds.AddRange(invitedIds);
 
         return response;
     }

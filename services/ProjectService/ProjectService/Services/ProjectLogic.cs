@@ -142,6 +142,14 @@ public class ProjectLogic(ProjectDbContext database)
         return invitation;
     }
 
+    public async Task<List<int>> ListProjectInvitations(int projectId, CancellationToken cancellationToken)
+    {
+        return await database.Invitations
+            .Where(i => i.ProjectId == projectId)
+            .Select(i => i.UserId)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<List<Invitation>> ListInvitations(int userId, CancellationToken cancellationToken)
     {
         return await database.Invitations
