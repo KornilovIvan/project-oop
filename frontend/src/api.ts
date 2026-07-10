@@ -139,6 +139,11 @@ async function req<T>(url: string, body?: unknown, method?: string): Promise<T> 
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (r.status === 401) {
+    localStorage.clear();
+    window.location.reload();
+    throw new Error("Session expired");
+  }
   if (!r.ok) {
     const response = await r.json().catch(() => null) as { error?: string } | null;
     throw new Error(response?.error || r.statusText);
