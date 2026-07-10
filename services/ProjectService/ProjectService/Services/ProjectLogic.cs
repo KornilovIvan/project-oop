@@ -108,6 +108,82 @@ public class ProjectLogic(ProjectDbContext database)
         await database.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<Invitation> InviteMember(
+        int projectId,
+        int userId,
+        int invitedById,
+        string invitedByUsername,
+        CancellationToken cancellationToken)
+    {
+        if (userId <= 0)
+            throw InvalidArgument("User id is required");
+
+        var project = await Get(projectId, cancellationToken);
+
+        if (project.Members.Any(member => member.UserId == userId))
+            throw new RpcException(new Status(StatusCode.AlreadyExists, "User is already a member"));
+
+        var existing = await database.Invitations
+            .FirstOrDefaultAsync(i => i.ProjectId == projectId && i.UserId == userId, cancellationToken);
+        if (existing != null)
+            throw new RpcException(new Status(StatusCode.AlreadyExists, "User already has a pending invitation"));
+
+        var invitation = new Invitation
+        {
+            ProjectId = projectId,
+            UserId = userId,
+            InvitedById = invitedById,
+            InvitedByUsername = invitedByUsername,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        database.Invitations.Add(invitation);
+        await database.SaveChangesAsync(cancellationToken);
+        return invitation;
+    }
+
+    public async Task<List<Invitation>> ListInvitations(int userId, CancellationToken cancellationToken)
+    {
+        return await database.Invitations
+            .Include(i => i.Project)
+            .Where(i => i.UserId == userId)
+            .OrderByDescending(i => i.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<Project> AcceptInvitation(int invitationId, int userId, CancellationToken cancellationToken)
+    {
+        var invitation = await database.Invitations
+            .Include(i => i.Project)
+            .ThenInclude(p => p.Members)
+            .FirstOrDefaultAsync(i => i.Id == invitationId, cancellationToken)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Invitation not found"));
+
+        if (invitation.UserId != userId)
+            throw new RpcException(new Status(StatusCode.PermissionDenied, "This invitation is not for you"));
+
+        var project = invitation.Project;
+
+        if (project.Members.All(member => member.UserId != userId))
+        {
+            project.Members.Add(new ProjectMember { ProjectId = project.Id, UserId = userId });
+        }
+
+        database.Invitations.Remove(invitation);
+        await database.SaveChangesAsync(cancellationToken);
+        return project;
+    }
+
+    public async Task RejectInvitation(int invitationId, CancellationToken cancellationToken)
+    {
+        var invitation = await database.Invitations
+            .FirstOrDefaultAsync(i => i.Id == invitationId, cancellationToken)
+            ?? throw new RpcException(new Status(StatusCode.NotFound, "Invitation not found"));
+
+        database.Invitations.Remove(invitation);
+        await database.SaveChangesAsync(cancellationToken);
+    }
+
     private static RpcException InvalidArgument(string message) =>
         new(new Status(StatusCode.InvalidArgument, message));
 }

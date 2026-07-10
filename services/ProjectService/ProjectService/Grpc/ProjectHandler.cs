@@ -74,6 +74,50 @@ public class ProjectHandler(ProjectLogic projects) : TaskManagement.Grpc.Project
         return new Empty();
     }
 
+    public override async Task<InvitationResponse> InviteMember(
+        InviteMemberRequest request,
+        ServerCallContext context)
+    {
+        var invitation = await projects.InviteMember(
+            request.ProjectId,
+            request.UserId,
+            request.InvitedById,
+            request.InvitedByUsername,
+            context.CancellationToken);
+
+        return await ToInvitationProto(invitation, context.CancellationToken);
+    }
+
+    public override async Task<ListInvitationsResponse> ListInvitations(
+        ListInvitationsRequest request,
+        ServerCallContext context)
+    {
+        var list = await projects.ListInvitations(request.UserId, context.CancellationToken);
+        var response = new ListInvitationsResponse();
+        foreach (var invitation in list)
+            response.Invitations.Add(await ToInvitationProto(invitation, context.CancellationToken));
+        return response;
+    }
+
+    public override async Task<ProjectResponse> AcceptInvitation(
+        AcceptInvitationRequest request,
+        ServerCallContext context)
+    {
+        var project = await projects.AcceptInvitation(
+            request.InvitationId,
+            request.UserId,
+            context.CancellationToken);
+        return ToProto(project);
+    }
+
+    public override async Task<Empty> RejectInvitation(
+        RejectInvitationRequest request,
+        ServerCallContext context)
+    {
+        await projects.RejectInvitation(request.InvitationId, context.CancellationToken);
+        return new Empty();
+    }
+
     private static ProjectResponse ToProto(Project project)
     {
         var response = new ProjectResponse
@@ -89,5 +133,20 @@ public class ProjectHandler(ProjectLogic projects) : TaskManagement.Grpc.Project
             .Select(member => member.UserId));
 
         return response;
+    }
+
+    private async Task<InvitationResponse> ToInvitationProto(Invitation invitation, CancellationToken cancellationToken)
+    {
+        var project = await projects.Get(invitation.ProjectId, cancellationToken);
+        return new InvitationResponse
+        {
+            Id = invitation.Id,
+            ProjectId = invitation.ProjectId,
+            ProjectName = project.Name,
+            InvitedById = invitation.InvitedById,
+            InvitedByUsername = invitation.InvitedByUsername,
+            CreatedAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(
+                DateTime.SpecifyKind(invitation.CreatedAt, DateTimeKind.Utc))
+        };
     }
 }

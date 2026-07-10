@@ -24,6 +24,10 @@ service ProjectService {
   rpc AddMember (AddProjectMemberRequest) returns (ProjectResponse);
   rpc RemoveMember (RemoveProjectMemberRequest) returns (google.protobuf.Empty);
   rpc DeleteProject (DeleteProjectRequest) returns (google.protobuf.Empty);
+  rpc InviteMember (InviteMemberRequest) returns (InvitationResponse);
+  rpc ListInvitations (ListInvitationsRequest) returns (ListInvitationsResponse);
+  rpc AcceptInvitation (AcceptInvitationRequest) returns (ProjectResponse);
+  rpc RejectInvitation (RejectInvitationRequest) returns (google.protobuf.Empty);
 }
 
 service TaskService {
@@ -112,6 +116,39 @@ message RemoveProjectMemberRequest {
 
 message DeleteProjectRequest {
   int32 id = 1;
+}
+
+message InviteMemberRequest {
+  int32 project_id = 1;
+  int32 user_id = 2;
+  int32 invited_by_id = 3;
+  string invited_by_username = 4;
+}
+
+message InvitationResponse {
+  int32 id = 1;
+  int32 project_id = 2;
+  string project_name = 3;
+  int32 invited_by_id = 4;
+  string invited_by_username = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message ListInvitationsRequest {
+  int32 user_id = 1;
+}
+
+message ListInvitationsResponse {
+  repeated InvitationResponse invitations = 1;
+}
+
+message AcceptInvitationRequest {
+  int32 invitation_id = 1;
+  int32 user_id = 2;
+}
+
+message RejectInvitationRequest {
+  int32 invitation_id = 1;
 }
 
 message CreateTaskRequest {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { projectApi, userApi } from "./api";
 import type { ProjectRes, UserRes } from "./api";
+import { NotificationBell } from "./NotificationBell";
 
 interface Props { userId: number; onSelectProject: (projectId: number) => void; onLogout: () => void; onProfile: () => void; onDashboard: () => void }
 
@@ -113,7 +114,9 @@ export function ProjectsPage({ userId, onSelectProject, onLogout, onProfile, onD
   };
 
   const addMember = async (projectId: number, memberId: number) => {
-    const updated = await projectApi.addMember(projectId, memberId);
+    await projectApi.inviteMember(projectId, memberId);
+    // Reload project to show pending state
+    const updated = await projectApi.get(projectId);
     setProjects(prev => prev.map(project => project.id === updated.id ? updated : project));
     setMembersProject(updated);
   };
@@ -184,7 +187,8 @@ export function ProjectsPage({ userId, onSelectProject, onLogout, onProfile, onD
             <button onClick={onDashboard} className="keycap-btn keycap-btn-outline">Home</button>
             <button className="keycap-btn keycap-btn-solid" style={{ cursor: "default" }}>My Projects</button>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <NotificationBell onAccept={onSelectProject} />
             <button onClick={onProfile} className="keycap-btn keycap-btn-outline">Profile</button>
             <button onClick={onLogout} className="keycap-btn keycap-btn-ghost">Logout</button>
           </div>

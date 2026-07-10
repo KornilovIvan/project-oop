@@ -3,6 +3,7 @@ import { getAllTasks, taskApi, userApi } from "./api";
 import type { TaskWithProject, UserRes } from "./api";
 import { columns, priorityLabels, priorityColors } from "./taskConstants";
 import { TaskDetailModal } from "./TaskDetailPanel";
+import { NotificationBell } from "./NotificationBell";
 
 const projectPalette = [
   { bg: "#f5ecec", border: "#dbb5b5" },
@@ -80,7 +81,8 @@ export function DashboardPage({ userId, onSelectProject, onProjects, onProfile, 
             <button className="keycap-btn keycap-btn-solid" style={{ cursor: "default" }}>Home</button>
             <button onClick={onProjects} className="keycap-btn keycap-btn-outline">My Projects</button>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <NotificationBell onAccept={onSelectProject} />
             <button onClick={onProfile} className="keycap-btn keycap-btn-outline">Profile</button>
             <button onClick={onLogout} className="keycap-btn keycap-btn-ghost">Logout</button>
           </div>

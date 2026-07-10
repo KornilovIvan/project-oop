@@ -171,6 +171,15 @@ export const userApi = {
   list: () => req<UserRes[]>("/users"),
 };
 
+export type InvitationRes = {
+  id: number;
+  projectId: number;
+  projectName: string;
+  invitedById: number;
+  invitedByUsername: string;
+  createdAt: string;
+}
+
 export const projectApi = {
   list: () => req<ProjectRes[]>("/projects"),
   create: (data: { name: string; description: string; createdById: number }) =>
@@ -187,6 +196,13 @@ export const projectApi = {
     req<void>(`/projects/${projectId}/members/${userId}`, undefined, "DELETE"),
   delete: (projectId: number) =>
     req<void>(`/projects/${projectId}`, undefined, "DELETE"),
+  inviteMember: (projectId: number, userId: number) =>
+    req<InvitationRes>(`/projects/${projectId}/invitations`, { userId }),
+  listInvitations: () => req<InvitationRes[]>("/invitations"),
+  acceptInvitation: (invitationId: number) =>
+    req<ProjectRes>(`/invitations/${invitationId}/accept`, {}),
+  rejectInvitation: (invitationId: number) =>
+    req<void>(`/invitations/${invitationId}/reject`, undefined, "POST"),
 };
 
 export const taskApi = {

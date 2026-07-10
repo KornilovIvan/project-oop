@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { generateAIDescription, projectApi, taskApi, userApi } from "./api";
+import { NotificationBell } from "./NotificationBell";
 import type { ProjectRes, TaskRes, UserRes } from "./api";
 import { columns, priorityLabels, priorityColors, userName } from "./taskConstants";
 import { TaskDetailModal } from "./TaskDetailPanel";
@@ -241,14 +242,12 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
                     </div>
                     <button onClick={async () => {
                       try {
-                        const updated = await projectApi.addMember(membersProject.id, user.id);
-                        setMembersProject(updated);
-                        setProject(updated);
-                        setSearchQuery("");
+                        await projectApi.inviteMember(membersProject.id, user.id);
+                        alert("Invitation sent to " + user.username);
                       } catch (err) {
                         alert(err instanceof Error ? err.message : "Failed");
                       }
-                    }} className="keycap-btn keycap-btn-outline" style={{ padding: "4px 10px", fontSize: 12 }}>Add</button>
+                    }} className="keycap-btn keycap-btn-outline" style={{ padding: "4px 10px", fontSize: 12 }}>Invite</button>
                   </div>
                 ))}
                 {users.filter(u => !membersProject.memberIds.includes(u.id) && (u.username.toLowerCase().includes(searchQuery.toLowerCase()) || u.email.toLowerCase().includes(searchQuery.toLowerCase()))).length === 0 && <p style={{ color: "#999", fontSize: 13 }}>No users found.</p>}
@@ -279,7 +278,8 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
       {/* Back / Invite / New Task — static, slide left */}
       <div style={{ padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", paddingRight: detailTask ? 444 : 24 }}>
         <button onClick={onBack} className="back-btn keycap-btn keycap-btn-ghost" style={{ padding: "6px 12px", fontSize: 14 }}>Back to Projects</button>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <NotificationBell onAccept={onDashboard ?? (() => {})} />
           {project?.adminIds.includes(userId) && (
             <button onClick={() => setMembersProject(project)} className="keycap-btn keycap-btn-outline" style={{ fontSize: 13 }}>
               Invite

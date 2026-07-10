@@ -129,6 +129,36 @@ app.MapDelete("/api/projects/{projectId}", async (int projectId, ClaimsPrincipal
         return Results.NoContent();
     })
     .RequireAuthorization();
+app.MapPost("/api/projects/{projectId}/invitations", async (int projectId, InviteMemberRequest request, ClaimsPrincipal principal) =>
+    {
+        var currentUserId = CurrentUserId(principal);
+        var currentUsername = principal.FindFirstValue(ClaimTypes.Name) ?? "";
+        await EnsureProjectAdmin(projectId, principal);
+        await users.GetUserAsync(new GetUserRequest { Id = request.UserId });
+        request.ProjectId = projectId;
+        request.InvitedById = currentUserId;
+        request.InvitedByUsername = currentUsername;
+        return Results.Ok(await projects.InviteMemberAsync(request));
+    })
+    .RequireAuthorization();
+app.MapGet("/api/invitations", async (ClaimsPrincipal principal) =>
+    {
+        var userId = CurrentUserId(principal);
+        return Results.Ok((await projects.ListInvitationsAsync(new ListInvitationsRequest { UserId = userId })).Invitations);
+    })
+    .RequireAuthorization();
+app.MapPost("/api/invitations/{invitationId}/accept", async (int invitationId, ClaimsPrincipal principal) =>
+    {
+        var userId = CurrentUserId(principal);
+        return Results.Ok(await projects.AcceptInvitationAsync(new AcceptInvitationRequest { InvitationId = invitationId, UserId = userId }));
+    })
+    .RequireAuthorization();
+app.MapPost("/api/invitations/{invitationId}/reject", async (int invitationId, ClaimsPrincipal principal) =>
+    {
+        await projects.RejectInvitationAsync(new RejectInvitationRequest { InvitationId = invitationId });
+        return Results.NoContent();
+    })
+    .RequireAuthorization();
 app.MapGet("/api/projects/{projectId}/tasks", async (int projectId, ClaimsPrincipal principal) =>
     {
         await EnsureProjectAccess(projectId, principal);

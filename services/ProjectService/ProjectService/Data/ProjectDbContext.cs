@@ -7,6 +7,7 @@ public class ProjectDbContext(DbContextOptions<ProjectDbContext> options) : DbCo
 {
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ProjectMember> ProjectMembers => Set<ProjectMember>();
+    public DbSet<Invitation> Invitations => Set<Invitation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,6 +25,16 @@ public class ProjectDbContext(DbContextOptions<ProjectDbContext> options) : DbCo
         {
             entity.HasKey(member => new { member.ProjectId, member.UserId });
             entity.HasIndex(member => member.UserId);
+        });
+
+        modelBuilder.Entity<Invitation>(entity =>
+        {
+            entity.HasKey(invitation => invitation.Id);
+            entity.HasOne(invitation => invitation.Project)
+                .WithMany()
+                .HasForeignKey(invitation => invitation.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(invitation => invitation.UserId);
         });
     }
 }
