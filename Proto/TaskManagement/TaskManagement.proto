@@ -41,6 +41,7 @@ service TaskService {
   rpc DeleteTasksByProject (DeleteTasksByProjectRequest) returns (google.protobuf.Empty);
   rpc UpdateTaskDescription (UpdateTaskDescriptionRequest) returns (TaskResponse);
   rpc UpdateTaskTitle (UpdateTaskTitleRequest) returns (TaskResponse);
+  rpc UpdateTaskPriority (UpdateTaskPriorityRequest) returns (TaskResponse);
 }
 
 enum TaskStatus {
@@ -200,6 +201,11 @@ message UpdateTaskDescriptionRequest {
 message UpdateTaskTitleRequest {
   int32 task_id = 1;
   string title = 2;
+}
+
+message UpdateTaskPriorityRequest {
+  int32 task_id = 1;
+  TaskPriority priority = 2;
 }
 
 message ChangeTaskStatusRequest {

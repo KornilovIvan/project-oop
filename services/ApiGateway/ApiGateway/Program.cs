@@ -186,6 +186,14 @@ app.MapPost("/api/tasks", async (CreateTaskRequest request, ClaimsPrincipal prin
         return Results.Ok(await tasks.CreateTaskAsync(request));
     })
     .RequireAuthorization();
+app.MapPost("/api/tasks/{taskId}/priority", async (int taskId, UpdateTaskPriorityRequest request, ClaimsPrincipal principal) =>
+    {
+        var task = await tasks.GetTaskAsync(new GetTaskRequest { Id = taskId });
+        await EnsureProjectAccess(task.ProjectId, principal);
+        request.TaskId = taskId;
+        return Results.Ok(await tasks.UpdateTaskPriorityAsync(request));
+    })
+    .RequireAuthorization();
 app.MapPost("/api/tasks/{taskId}/assignee", async (int taskId, AssignTaskRequest request, ClaimsPrincipal principal) =>
     {
         await EnsureProjectAdminByTask(taskId, principal);

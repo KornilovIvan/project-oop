@@ -226,6 +226,8 @@ export const taskApi = {
     req<TaskRes>(`/tasks/${taskId}/title`, { title }),
   updateDescription: (taskId: number, description: string) =>
     req<TaskRes>(`/tasks/${taskId}/description`, { description }),
+  updatePriority: (taskId: number, priority: number) =>
+    req<TaskRes>(`/tasks/${taskId}/priority`, { priority }),
 };
 
 export async function getAllTasks(): Promise<TaskWithProject[]> {

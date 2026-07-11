@@ -1,14 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { aiGenerateSubtasks, aiImproveDescription, taskApi } from "./api";
 import type { TaskRes, UserRes } from "./api";
-import { columns, priorityLabels, userName } from "./taskConstants";
+import { columns, priorityLabels } from "./taskConstants";
 
-export function TaskDetailModal({ task, users, onClose, projectId, userId }: { task: TaskRes; users: UserRes[]; onClose: () => void; projectId: number; userId: number }) {
-  const [aiText, setAiText] = useState("");
+export function TaskDetailModal({ task, users, onClose, projectId, userId, memberIds, isAdmin }: { task: TaskRes; users: UserRes[]; onClose: () => void; projectId: number; userId: number; memberIds?: number[]; isAdmin?: boolean }) {
+  const [descText, setDescText] = useState(task.description || "");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
   const [feedback, setFeedback] = useState("");
-  const [applyLoading, setApplyLoading] = useState(false);
   const [showAi, setShowAi] = useState(false);
   const [showSubtask, setShowSubtask] = useState(false);
   const [subtasksLoading, setSubtasksLoading] = useState(false);
@@ -16,6 +15,7 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId }: { t
   const [editTitle, setEditTitle] = useState(false);
   const [titleText, setTitleText] = useState("");
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const descTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
     if (editTitle && titleRef.current) {
@@ -39,6 +39,47 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId }: { t
       setAiError(e instanceof Error ? e.message : "Failed to update title");
     }
   };
+
+  const handleDescChange = (val: string) => {
+    setDescText(val);
+    if (descTimer.current) clearTimeout(descTimer.current);
+    descTimer.current = setTimeout(async () => {
+      try {
+        const updated = await taskApi.updateDescription(task.id, val);
+        Object.assign(task, updated);
+      } catch { /* ignore */ }
+    }, 600);
+  };
+
+  const handleStatusChange = async (status: number) => {
+    try {
+      const updated = await taskApi.changeStatus(task.id, { status });
+      Object.assign(task, updated);
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
+  const handlePriorityChange = async (priority: number) => {
+    try {
+      const updated = await taskApi.updatePriority(task.id, priority);
+      Object.assign(task, updated);
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
+  const handleAssigneeChange = async (assigneeId: number) => {
+    try {
+      const updated = await taskApi.assign(task.id, assigneeId);
+      Object.assign(task, updated);
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
+  const canChangeStatus = isAdmin || task.assigneeId === userId;
+  const canChangeAssignee = isAdmin === true;
 
   const handleSubtask = async () => {
     setSubtasksLoading(true);
@@ -80,13 +121,27 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId }: { t
     }
   };
 
-  const handleGenerate = async () => {
+  const handleAIApply = async () => {
+    try {
+      const result = await aiImproveDescription(task.title, task.description);
+      setDescText(result);
+      const updated = await taskApi.updateDescription(task.id, result);
+      Object.assign(task, updated);
+      setShowAi(false);
+    } catch (e: unknown) {
+      setAiError(e instanceof Error ? e.message : "AI error");
+    }
+  };
+
+  const handleAIRegenerate = async () => {
     if (!feedback.trim()) return;
     setAiLoading(true);
     setAiError("");
     try {
       const result = await aiImproveDescription(task.title, feedback || task.description);
-      setAiText(result);
+      setDescText(result);
+      const updated = await taskApi.updateDescription(task.id, result);
+      Object.assign(task, updated);
       setFeedback("");
     } catch (e: unknown) {
       setAiError(e instanceof Error ? e.message : "AI error");
@@ -95,120 +150,149 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId }: { t
     }
   };
 
-  const handleApply = async () => {
-    setApplyLoading(true);
-    try {
-      const updated = await taskApi.updateDescription(task.id, aiText);
-      Object.assign(task, updated);
-      setShowAi(false);
-      setAiText("");
-    } catch (e: unknown) {
-      setAiError(e instanceof Error ? e.message : "Failed to update");
-    } finally {
-      setApplyLoading(false);
-    }
-  };
-
   return (
-    <div style={{ padding: 24, overflowY: "auto", height: "100%" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 16 }}>
-          <h2
-            ref={titleRef}
-            contentEditable={editTitle}
-            suppressContentEditableWarning
-            onInput={e => setTitleText(e.currentTarget.textContent || "")}
-            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleSaveTitle(); } }}
-            style={{
-              margin: 0,
-              flex: 1,
-              outline: editTitle ? "1px solid #666" : "none",
-              outlineOffset: editTitle ? 7 : 0,
-              padding: 0,
-              borderRadius: 0,
-              cursor: editTitle ? "text" : "default",
-            }}
-          >{task.title}</h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#999" }}>x</button>
-        </div>
-        <p style={{ color: "#666", marginBottom: 16, lineHeight: 1.5 }}>{task.description || "No description"}</p>
-        <div style={{ display: "flex", gap: 12, fontSize: 14, color: "#888", marginBottom: 16 }}>
-          <span>Priority: <strong>{priorityLabels[task.priority] || "?"}</strong></span>
-          <span>Status: <strong>{columns.find(c => c.key === task.status)?.title || "?"}</strong></span>
-          <span>Assignee: <strong>{userName(users, task.assigneeId)}</strong></span>
-        </div>
+    <div style={{ padding: 24, overflowY: "auto", height: "100%", display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Title */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 8 }}>
+        <h2
+          ref={titleRef}
+          contentEditable={editTitle}
+          suppressContentEditableWarning
+          onInput={e => setTitleText(e.currentTarget.textContent || "")}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleSaveTitle(); } }}
+          onClick={() => { if (!editTitle) { setEditTitle(true); setTitleText(task.title); } }}
+          style={{
+            margin: 0,
+            flex: 1,
+            outline: editTitle ? "1px solid #666" : "none",
+            outlineOffset: editTitle ? 7 : 0,
+            padding: 0,
+            borderRadius: 0,
+            cursor: editTitle ? "text" : "pointer",
+            minHeight: 28,
+          }}
+        >{task.title}</h2>
+        {editTitle && (
+          <div style={{ display: "flex", gap: 4 }}>
+            <button onClick={handleSaveTitle} className="keycap-btn keycap-btn-solid" style={{ fontSize: 11, padding: "4px 8px" }}>Save</button>
+            <button onClick={() => setEditTitle(false)} className="keycap-btn keycap-btn-ghost" style={{ fontSize: 11, padding: "4px 8px" }}>×</button>
+          </div>
+        )}
+        <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#999" }}>×</button>
+      </div>
 
-        {/* Title edit / Description edit / Subtasks */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          {editTitle ? (
-            <>
-              <button onClick={handleSaveTitle} className="keycap-btn keycap-btn-solid" style={{ fontSize: 12, padding: "6px 12px" }}>Save</button>
-              <button onClick={() => { setEditTitle(false); }} className="keycap-btn keycap-btn-ghost" style={{ fontSize: 12, padding: "6px 12px" }}>Cancel</button>
-            </>
+      {/* Description */}
+      <textarea
+        value={descText}
+        onChange={e => handleDescChange(e.target.value)}
+        placeholder="Add description..."
+        rows={4}
+        style={{ width: "100%", padding: 10, border: "1px solid #ddd", fontSize: 13, boxSizing: "border-box", resize: "vertical", fontFamily: "inherit", lineHeight: 1.5 }}
+      />
+
+      {/* Metadata */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ color: "#888", minWidth: 70 }}>Status</span>
+          <span style={{ color: "#999" }}>→</span>
+          {canChangeStatus ? (
+            <select value={task.status} onChange={e => handleStatusChange(Number(e.target.value))} className="keycap-btn keycap-btn-outline" style={{ flex: 1, fontSize: 13, padding: "6px 8px", cursor: "pointer" }}>
+              {columns.map(col => <option key={col.key} value={col.key}>{col.title}</option>)}
+            </select>
           ) : (
-            <button onClick={() => { setEditTitle(true); setTitleText(task.title); }} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, padding: "6px 12px" }}>Edit title</button>
+            <span style={{ flex: 1, padding: "6px 8px" }}>{columns.find(c => c.key === task.status)?.title || "?"}</span>
           )}
-          <button onClick={() => { setShowAi(!showAi); if (!showAi) setAiText(task.description || ""); }} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, padding: "6px 12px" }}>
-            {showAi ? "Cancel" : "Edit description"}
-          </button>
-          <button onClick={() => { setShowSubtask(!showSubtask); if (!showSubtask) setSubtaskItems([]); }} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, padding: "6px 12px" }}>
-            {showSubtask ? "Cancel" : "Subtasks"}
-          </button>
         </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ color: "#888", minWidth: 70 }}>Priority</span>
+          <span style={{ color: "#999" }}>→</span>
+          {canChangeStatus ? (
+            <select value={task.priority} onChange={e => handlePriorityChange(Number(e.target.value))} className="keycap-btn keycap-btn-outline" style={{ flex: 1, fontSize: 13, padding: "6px 8px", cursor: "pointer" }}>
+              <option value={1}>Low</option>
+              <option value={2}>Medium</option>
+              <option value={3}>High</option>
+              <option value={4}>Critical</option>
+            </select>
+          ) : (
+            <span style={{ flex: 1, padding: "6px 8px" }}>{priorityLabels[task.priority] || "?"}</span>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ color: "#888", minWidth: 70 }}>Assignee</span>
+          <span style={{ color: "#999" }}>→</span>
+          {canChangeAssignee ? (
+            <select value={task.assigneeId} onChange={e => handleAssigneeChange(Number(e.target.value))} className="keycap-btn keycap-btn-outline" style={{ flex: 1, fontSize: 13, padding: "6px 8px", cursor: "pointer" }}>
+              {users.filter(u => !memberIds || memberIds.includes(u.id)).map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
+            </select>
+          ) : (
+            <span style={{ flex: 1, padding: "6px 8px" }}>{users.find(u => u.id === task.assigneeId)?.username || "?"}</span>
+          )}
+        </div>
+      </div>
 
-        {aiError && <p style={{ color: "red", fontSize: 13, marginBottom: 8 }}>{aiError}</p>}
+      {/* Actions */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <button onClick={() => { setShowAi(!showAi); }} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, padding: "6px 12px" }}>
+          {showAi ? "Close AI" : "✨ AI"}
+        </button>
+        <button onClick={() => { setShowSubtask(!showSubtask); if (!showSubtask) setSubtaskItems([]); }} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, padding: "6px 12px" }}>
+          {showSubtask ? "Close" : "Subtasks"}
+        </button>
+      </div>
 
-        {showAi && (
-          <div>
-            <textarea
-              value={aiText}
-              onChange={e => setAiText(e.target.value)}
-              rows={4}
-              style={{ width: "100%", padding: 10, border: "1px solid #ddd", fontSize: 13, boxSizing: "border-box", resize: "vertical", marginBottom: 8 }}
+      {aiError && <p style={{ color: "red", fontSize: 13, margin: 0 }}>{aiError}</p>}
+
+      {/* AI panel */}
+      {showAi && (
+        <div style={{ padding: 12, background: "#fafafa", border: "1px solid #eee" }}>
+          <p style={{ fontSize: 13, color: "#555", margin: "0 0 8px" }}>Improve description with AI or give custom feedback.</p>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            <button onClick={handleAIApply} disabled={aiLoading} className="keycap-btn keycap-btn-solid" style={{ fontSize: 12, padding: "6px 12px" }}>
+              {aiLoading ? "..." : "Auto-improve"}
+            </button>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input
+              placeholder="Make it shorter, add details..."
+              value={feedback}
+              onChange={e => setFeedback(e.target.value)}
+              style={{ flex: 1, padding: "8px 10px", border: "1px solid #ddd", fontSize: 13, boxSizing: "border-box" }}
             />
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={handleApply} disabled={applyLoading} className="keycap-btn keycap-btn-solid" style={{ fontSize: 12, padding: "6px 14px" }}>
-                {applyLoading ? "..." : "Save"}
-              </button>
-              <input
-                placeholder="AI prompt (optional — make shorter, more detailed...)"
-                value={feedback}
-                onChange={e => setFeedback(e.target.value)}
-                style={{ flex: 1, padding: "8px 10px", border: "1px solid #ddd", fontSize: 13, boxSizing: "border-box" }}
-              />
-              <button onClick={handleGenerate} disabled={aiLoading || !feedback.trim()} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, whiteSpace: "nowrap" }}>
-                {aiLoading ? "..." : "AI"}
+            <button onClick={handleAIRegenerate} disabled={aiLoading || !feedback.trim()} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, whiteSpace: "nowrap", padding: "6px 12px" }}>
+              {aiLoading ? "..." : "Apply feedback"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Subtasks */}
+      {showSubtask && (
+        <div style={{ padding: 12, background: "#fafafa", border: "1px solid #eee" }}>
+          <p style={{ fontSize: 13, color: "#555", margin: "0 0 8px" }}>
+            AI will split this task into 3-5 smaller subtasks. Select which ones to add.
+          </p>
+          <button onClick={handleSubtask} disabled={subtasksLoading} className="keycap-btn keycap-btn-solid" style={{ fontSize: 12, padding: "6px 12px" }}>
+            {subtasksLoading ? "Generating..." : "Generate with AI"}
+          </button>
+          {subtaskItems.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              {subtaskItems.map(item => (
+                <div key={item.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 0", borderBottom: "1px solid #eee" }}>
+                  <input type="checkbox" checked={item.checked} onChange={() => toggleSubtask(item.id)} style={{ accentColor: "#222" }} />
+                  <input
+                    value={item.title}
+                    onChange={e => updateSubtaskTitle(item.id, e.target.value)}
+                    style={{ flex: 1, padding: "6px 8px", border: "1px solid #ddd", fontSize: 13, boxSizing: "border-box" }}
+                  />
+                </div>
+              ))}
+              <button onClick={addSelectedSubtasks} className="keycap-btn keycap-btn-solid" style={{ fontSize: 12, padding: "6px 12px", marginTop: 8 }}>
+                Add selected ({subtaskItems.filter(i => i.checked).length})
               </button>
             </div>
-          </div>
-        )}
-
-        {showSubtask && (
-          <div style={{ padding: 12, background: "#fafafa", border: "1px solid #eee", marginBottom: 12 }}>
-            <p style={{ fontSize: 13, color: "#555", marginBottom: 8 }}>
-              AI will split this task into 3-5 smaller subtasks. Select which ones to add to the project.
-            </p>
-            <button onClick={handleSubtask} disabled={subtasksLoading} className="keycap-btn keycap-btn-solid" style={{ fontSize: 12, padding: "6px 14px" }}>
-              {subtasksLoading ? "Generating..." : "Generate with AI"}
-            </button>
-            {subtaskItems.length > 0 && (
-              <div style={{ marginTop: 12 }}>
-                {subtaskItems.map(item => (
-                  <div key={item.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 0", borderBottom: "1px solid #eee" }}>
-                    <input type="checkbox" checked={item.checked} onChange={() => toggleSubtask(item.id)} style={{ accentColor: "#222" }} />
-                    <input
-                      value={item.title}
-                      onChange={e => updateSubtaskTitle(item.id, e.target.value)}
-                      style={{ flex: 1, padding: "6px 8px", border: "1px solid #ddd", fontSize: 13, boxSizing: "border-box" }}
-                    />
-                  </div>
-                ))}
-                <button onClick={addSelectedSubtasks} className="keycap-btn keycap-btn-solid" style={{ fontSize: 12, padding: "6px 14px", marginTop: 8 }}>
-                  Add selected ({subtaskItems.filter(i => i.checked).length})
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

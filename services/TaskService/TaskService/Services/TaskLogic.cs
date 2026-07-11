@@ -84,9 +84,6 @@ public class TaskLogic(TaskDbContext database)
         if (status is < StatusTodo or > StatusDone)
             throw InvalidArgument("Task status must be between 1 and 4");
 
-        if (task.Status == StatusDone || status != task.Status + 1)
-            throw InvalidArgument("Task can only move to the next status");
-
         task.Status = status;
         await database.SaveChangesAsync(cancellationToken);
         return task;
@@ -117,6 +114,19 @@ public class TaskLogic(TaskDbContext database)
     {
         var task = await Get(taskId, cancellationToken);
         task.Title = title;
+        await database.SaveChangesAsync(cancellationToken);
+        return task;
+    }
+
+    public async Task<TaskItem> UpdatePriority(
+        int taskId,
+        int priority,
+        CancellationToken cancellationToken)
+    {
+        var task = await Get(taskId, cancellationToken);
+        if (priority is < 1 or > 4)
+            throw InvalidArgument("Task priority must be between 1 and 4");
+        task.Priority = priority;
         await database.SaveChangesAsync(cancellationToken);
         return task;
     }

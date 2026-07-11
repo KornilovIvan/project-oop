@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { generateAIDescription, projectApi, taskApi, userApi } from "./api";
 import { NotificationBell } from "./NotificationBell";
 import type { ProjectRes, TaskRes, UserRes } from "./api";
@@ -151,11 +152,6 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
   const onDrop = (e: React.DragEvent, newStatus: number) => {
     e.preventDefault();
     const taskId = Number(e.dataTransfer.getData("text/plain"));
-    const task = tasks.find(item => item.id === taskId);
-    if (!task || newStatus !== task.status + 1) {
-      setStatusError("Tasks can only move to the next status");
-      return;
-    }
     changeStatus(taskId, newStatus);
   };
 
@@ -382,12 +378,21 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
       </div>
       </div>
 
-      {/* Side panel for task details */}
-      {detailTask && (
-        <div style={{ position: "fixed", top: 0, right: 0, width: 420, height: "100vh", borderLeft: "1px solid #e0e0e0", overflowY: "auto", background: "#fff", zIndex: 100, boxShadow: "-4px 0 12px rgba(0,0,0,0.06)" }}>
-          <TaskDetailModal task={detailTask} users={users} projectId={projectId} userId={userId} onClose={() => setDetailTask(null)} />
-        </div>
-      )}
+      {/* Side panel for task details — animated with Framer Motion */}
+      <AnimatePresence>
+        {detailTask && (
+          <motion.div
+            key="task-panel"
+            initial={{ x: 420 }}
+            animate={{ x: 0 }}
+            exit={{ x: 420 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            style={{ position: "fixed", top: 0, right: 0, width: 420, height: "100vh", borderLeft: "1px solid #e0e0e0", overflowY: "auto", background: "#fff", zIndex: 100, boxShadow: "-4px 0 12px rgba(0,0,0,0.06)" }}
+          >
+            <TaskDetailModal task={detailTask} users={users} projectId={projectId} userId={userId} memberIds={project?.memberIds} isAdmin={isProjectAdmin} onClose={() => setDetailTask(null)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
       </div>
   );
 }

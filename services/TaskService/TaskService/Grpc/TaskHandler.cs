@@ -99,6 +99,17 @@ public class TaskHandler(TaskLogic tasks) : TaskManagement.Grpc.TaskService.Task
         return ToProto(task);
     }
 
+    public override async Task<TaskResponse> UpdateTaskPriority(
+        UpdateTaskPriorityRequest request,
+        ServerCallContext context)
+    {
+        var task = await tasks.UpdatePriority(
+            request.TaskId,
+            (int)request.Priority,
+            context.CancellationToken);
+        return ToProto(task);
+    }
+
     public override async Task<Empty> DeleteTasksByProject(
         DeleteTasksByProjectRequest request,
         ServerCallContext context)
