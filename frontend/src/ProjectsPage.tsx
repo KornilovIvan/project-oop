@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { projectApi, userApi } from "./api";
 import type { ProjectRes, UserRes } from "./api";
-import { NotificationBell } from "./NotificationBell";
+import { NavBar } from "./NavBar";
 
 interface Props { userId: number; onSelectProject: (projectId: number) => void; onLogout: () => void; onProfile: () => void; onDashboard: () => void }
 
@@ -190,20 +190,7 @@ export function ProjectsPage({ userId, onSelectProject, onLogout, onProfile, onD
         </div>
       )}
 
-      {/* Full-width navigation */}
-      <div style={{ padding: "24px 24px 16px", borderBottom: "1px solid #eee" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={onDashboard} className="keycap-btn keycap-btn-outline">Home</button>
-            <button className="keycap-btn keycap-btn-solid" style={{ cursor: "default" }}>My Projects</button>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <NotificationBell onAccept={onSelectProject} />
-            <button onClick={onProfile} className="keycap-btn keycap-btn-outline">Profile</button>
-            <button onClick={onLogout} className="keycap-btn keycap-btn-ghost">Logout</button>
-          </div>
-        </div>
-      </div>
+      <NavBar page="projects" onDashboard={onDashboard} onSelectProject={onSelectProject} onProfile={onProfile} onLogout={onLogout} />
 
       {/* Context menu */}
       {ctxMenu && (

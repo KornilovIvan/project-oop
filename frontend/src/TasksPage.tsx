@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { generateAIDescription, projectApi, taskApi, userApi } from "./api";
-import { NotificationBell } from "./NotificationBell";
+import { NavBar } from "./NavBar";
 import type { ProjectRes, TaskRes, UserRes } from "./api";
 import { columns, priorityLabels, priorityColors, userName } from "./taskConstants";
 import { TaskDetailModal } from "./TaskDetailPanel";
@@ -175,20 +175,7 @@ export function TasksPage({ projectId, userId, onBack, onDashboard, onProjects, 
         />
       )}
 
-      {/* Navigation */}
-      <div style={{ padding: "24px 24px 16px", borderBottom: "1px solid #eee", paddingRight: detailTask ? 444 : 24 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            {onDashboard && <button onClick={onDashboard} className="keycap-btn keycap-btn-outline">Home</button>}
-            {onProjects && <button onClick={onProjects} className="keycap-btn keycap-btn-outline">My Projects</button>}
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <NotificationBell onAccept={onDashboard ?? (() => {})} />
-            {onProfile && <button onClick={onProfile} className="keycap-btn keycap-btn-outline">Profile</button>}
-            {onLogout && <button onClick={onLogout} className="keycap-btn keycap-btn-ghost">Logout</button>}
-          </div>
-        </div>
-      </div>
+      <NavBar page="tasks" onDashboard={onDashboard} onProjects={onProjects} onSelectProject={onDashboard ?? undefined} onProfile={onProfile} onLogout={onLogout} style={{ paddingRight: detailTask ? 444 : 24, transition: "padding-right 0.15s ease" }} />
 
       {/* Members modal */}
       {membersProject && (

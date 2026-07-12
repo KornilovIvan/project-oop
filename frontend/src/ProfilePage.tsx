@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getApiKey, setApiKey } from "./api";
+import { NavBar } from "./NavBar";
 
 interface Props { username: string; email: string; onBack: () => void; onLogout: () => void; onDashboard?: () => void; onProjects?: () => void }
 
@@ -15,19 +16,7 @@ export function ProfilePage({ username, email, onBack, onLogout, onDashboard, on
 
   return (
     <div>
-      {/* Navigation */}
-      <div style={{ padding: "24px 24px 16px", borderBottom: "1px solid #eee" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            {onDashboard && <button onClick={onDashboard} className="keycap-btn keycap-btn-outline">Home</button>}
-            {onProjects && <button onClick={onProjects} className="keycap-btn keycap-btn-outline">My Projects</button>}
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="keycap-btn keycap-btn-solid" style={{ cursor: "default" }}>Profile</button>
-            <button onClick={onLogout} className="keycap-btn keycap-btn-ghost">Logout</button>
-          </div>
-        </div>
-      </div>
+      <NavBar page="profile" onDashboard={onDashboard} onProjects={onProjects} onProfile={() => {}} onLogout={onLogout} />
 
       {/* Content */}
       <div style={{ padding: 24 }}>

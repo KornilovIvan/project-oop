@@ -4,7 +4,7 @@ import { getAllTasks, taskApi, userApi } from "./api";
 import type { TaskWithProject, UserRes } from "./api";
 import { columns, priorityLabels, priorityColors } from "./taskConstants";
 import { TaskDetailModal } from "./TaskDetailPanel";
-import { NotificationBell } from "./NotificationBell";
+import { NavBar } from "./NavBar";
 
 const projectPalette = [
   { bg: "#f5ecec", border: "#dbb5b5" },
@@ -70,20 +70,7 @@ export function DashboardPage({ userId, onSelectProject, onProjects, onProfile, 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      {/* Navigation — shifts left when panel opens */}
-      <div style={{ padding: "24px 24px 16px", paddingRight: detailTask ? 444 : 24, borderBottom: "1px solid #eee", transition: "padding-right 0.15s ease" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="keycap-btn keycap-btn-solid" style={{ cursor: "default" }}>Home</button>
-            <button onClick={onProjects} className="keycap-btn keycap-btn-outline">My Projects</button>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <NotificationBell onAccept={onSelectProject} />
-            <button onClick={onProfile} className="keycap-btn keycap-btn-outline">Profile</button>
-            <button onClick={onLogout} className="keycap-btn keycap-btn-ghost">Logout</button>
-          </div>
-        </div>
-      </div>
+      <NavBar page="dashboard" onProjects={onProjects} onSelectProject={onSelectProject} onProfile={onProfile} onLogout={onLogout} style={{ paddingRight: detailTask ? 444 : 24, transition: "padding-right 0.15s ease" }} />
 
       {/* Header */}
       <div style={{ padding: "16px 24px 0" }}>
