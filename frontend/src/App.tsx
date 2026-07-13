@@ -9,7 +9,7 @@ type Page =
   | { name: "login" }
   | { name: "dashboard"; userId: number; username: string }
   | { name: "projects"; userId: number; username: string }
-  | { name: "tasks"; projectId: number; userId: number }
+  | { name: "tasks"; projectId: number; userId: number; username: string }
   | { name: "profile"; userId: number; username: string; email: string };
 
 function getSession(): { userId: number; username: string; email: string } | null {
@@ -29,7 +29,7 @@ function initPage(): Page {
   const s = getSession();
   if (!s) return { name: "login" };
   const saved = localStorage.getItem("page");
-  if (saved === "tasks") { const pid = localStorage.getItem("projectId"); if (pid) return { name: "tasks", projectId: Number(pid), userId: s.userId }; }
+  if (saved === "tasks") { const pid = localStorage.getItem("projectId"); if (pid) return { name: "tasks", projectId: Number(pid), userId: s.userId, username: s.username }; }
   return { name: "dashboard", userId: s.userId, username: s.username };
 }
 
@@ -50,10 +50,10 @@ function App() {
   };
 
   if (page.name === "login") return <LoginPage onLogin={() => { const session = s(); nav(setPage, { name: "dashboard", userId: session.userId, username: session.username }); }} />;
-  if (page.name === "tasks") return <TasksPage projectId={page.projectId} userId={page.userId} onBack={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username })} onDashboard={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username })} onProjects={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username })} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} />;
+  if (page.name === "tasks") return <TasksPage projectId={page.projectId} userId={page.userId} username={page.username} onBack={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username })} onDashboard={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username })} onProjects={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username })} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} />;
   if (page.name === "profile") return <ProfilePage username={page.username} email={page.email} onBack={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} onDashboard={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username })} onProjects={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username })} />;
-  if (page.name === "projects") return <ProjectsPage userId={page.userId} onSelectProject={pid => nav(setPage, { name: "tasks", projectId: pid, userId: page.userId })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email })} onDashboard={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username })} />;
-  return <DashboardPage userId={page.userId} onSelectProject={pid => nav(setPage, { name: "tasks", projectId: pid, userId: page.userId })} onProjects={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username })} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} />;
+  if (page.name === "projects") return <ProjectsPage userId={page.userId} username={page.username} onSelectProject={pid => nav(setPage, { name: "tasks", projectId: pid, userId: page.userId, username: s().username })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email })} onDashboard={() => nav(setPage, { name: "dashboard", userId: s().userId, username: s().username })} />;
+  return <DashboardPage userId={page.userId} username={page.username} onSelectProject={pid => nav(setPage, { name: "tasks", projectId: pid, userId: page.userId })} onProjects={() => nav(setPage, { name: "projects", userId: s().userId, username: s().username })} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} />;
 }
 
 export default App;

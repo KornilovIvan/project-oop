@@ -3,7 +3,7 @@ import { projectApi, userApi } from "./api";
 import type { ProjectRes, UserRes } from "./api";
 import { NavBar } from "./NavBar";
 
-interface Props { userId: number; onSelectProject: (projectId: number) => void; onLogout: () => void; onProfile: () => void; onDashboard: () => void }
+interface Props { userId: number; username?: string; onSelectProject: (projectId: number) => void; onLogout: () => void; onProfile: () => void; onDashboard: () => void }
 
 function MembersModal({
   project,
@@ -86,7 +86,7 @@ function MembersModal({
   );
 }
 
-export function ProjectsPage({ userId, onSelectProject, onLogout, onProfile, onDashboard }: Props) {
+export function ProjectsPage({ userId, username, onSelectProject, onLogout, onProfile, onDashboard }: Props) {
   const [projects, setProjects] = useState<ProjectRes[]>([]);
   const [users, setUsers] = useState<UserRes[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -190,7 +190,7 @@ export function ProjectsPage({ userId, onSelectProject, onLogout, onProfile, onD
         </div>
       )}
 
-      <NavBar page="projects" onDashboard={onDashboard} onSelectProject={onSelectProject} onProfile={onProfile} onLogout={onLogout} />
+      <NavBar page="projects" username={username} onDashboard={onDashboard} onSelectProject={onSelectProject} onProfile={onProfile} onLogout={onLogout} />
 
       {/* Context menu */}
       {ctxMenu && (

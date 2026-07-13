@@ -45,10 +45,10 @@ export function NotificationBell({ onAccept }: { onAccept: (projectId: number) =
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <button onClick={() => setOpen(!open)} className="keycap-btn keycap-btn-outline" style={{ fontSize: 13, padding: "4px 10px", position: "relative" }}>
+      <button onClick={() => setOpen(!open)} style={{ background: "none", border: "none", fontSize: 16, cursor: "pointer", position: "relative", padding: 4, lineHeight: 1 }}>
         🔔
         {invitations.length > 0 && (
-          <span style={{ position: "absolute", top: -4, right: -4, background: "#222", color: "#fff", fontSize: 10, width: 16, height: 16, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
+          <span style={{ position: "absolute", top: 0, right: 0, background: "#222", color: "#fff", fontSize: 9, width: 15, height: 15, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
             {invitations.length}
           </span>
         )}

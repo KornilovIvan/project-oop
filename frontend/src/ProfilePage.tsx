@@ -16,7 +16,7 @@ export function ProfilePage({ username, email, onBack, onLogout, onDashboard, on
 
   return (
     <div>
-      <NavBar page="profile" onDashboard={onDashboard} onProjects={onProjects} onProfile={() => {}} onLogout={onLogout} />
+      <NavBar page="profile" username={username} onDashboard={onDashboard} onProjects={onProjects} onProfile={() => {}} onLogout={onLogout} />
 
       {/* Content */}
       <div style={{ padding: 24 }}>

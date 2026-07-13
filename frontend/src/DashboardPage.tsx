@@ -21,13 +21,14 @@ const projectPalette = [
 
 interface Props {
   userId: number;
+  username: string;
   onSelectProject: (projectId: number) => void;
   onProjects: () => void;
   onProfile: () => void;
   onLogout: () => void;
 }
 
-export function DashboardPage({ userId, onSelectProject, onProjects, onProfile, onLogout }: Props) {
+export function DashboardPage({ userId, username, onSelectProject, onProjects, onProfile, onLogout }: Props) {
   const [tasks, setTasks] = useState<TaskWithProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusError, setStatusError] = useState("");
@@ -70,7 +71,7 @@ export function DashboardPage({ userId, onSelectProject, onProjects, onProfile, 
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <NavBar page="dashboard" onProjects={onProjects} onSelectProject={onSelectProject} onProfile={onProfile} onLogout={onLogout} style={{ paddingRight: detailTask ? 444 : 24, transition: "padding-right 0.15s ease" }} />
+      <NavBar page="dashboard" username={username} onProjects={onProjects} onSelectProject={onSelectProject} onProfile={onProfile} onLogout={onLogout} style={{ paddingRight: detailTask ? 444 : 24, transition: "padding-right 0.15s ease" }} />
 
       {/* Header */}
       <div style={{ padding: "16px 24px 0" }}>
