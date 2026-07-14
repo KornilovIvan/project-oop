@@ -5,112 +5,18 @@ import { NavBar } from "./NavBar";
 
 interface Props { userId: number; username?: string; onSelectProject: (projectId: number) => void; onLogout: () => void; onProfile: () => void; onDashboard: () => void }
 
-function MembersModal({
-  project,
-  users,
-  onClose,
-  onAdd,
-  onRemove,
-}: {
-  project: ProjectRes;
-  users: UserRes[];
-  onClose: () => void;
-  onAdd: (userId: number) => Promise<void>;
-  onRemove: (userId: number) => Promise<void>;
-}) {
-  const [busyUserId, setBusyUserId] = useState<number | null>(null);
-  const members = users.filter(user => project.memberIds.includes(user.id));
-
-  const run = async (userId: number, action: (userId: number) => Promise<void>) => {
-    setBusyUserId(userId);
-    try { await action(userId); }
-    finally { setBusyUserId(null); }
-  };
-
-  return (
-    <div onClick={onClose} className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-      <div onClick={e => e.stopPropagation()} className="modal-content" style={{ background: "#fff", padding: 32, maxWidth: 620, width: "92%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <h3 style={{ margin: 0 }}>Project members</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#999" }}>x</button>
-        </div>
-        <p style={{ margin: "0 0 16px", color: "#666", fontSize: 14 }}>{project.name}</p>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <div>
-            <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "#666" }}>Members</h4>
-            {members.map(user => (
-              <div key={user.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #eee" }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{user.username}</div>
-                  <div style={{ fontSize: 12, color: "#888" }}>{user.email}</div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 12, color: "#777" }}>
-                    {project.adminIds.includes(user.id) ? "Admin" : "Executor"}
-                  </span>
-                  <button disabled={busyUserId === user.id} onClick={() => run(user.id, onRemove)} className="keycap-btn keycap-btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }}>Remove</button>
-                </div>
-              </div>
-            ))}
-            {members.length === 0 && <p style={{ color: "#999", fontSize: 13 }}>No members yet.</p>}
-          </div>
-
-          <div>
-            <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "#666" }}>Pending invitations</h4>
-            {project.invitedUserIds.length > 0 ? users.filter(u => project.invitedUserIds.includes(u.id)).map(user => (
-              <div key={user.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #eee" }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{user.username}</div>
-                  <div style={{ fontSize: 12, color: "#888" }}>{user.email}</div>
-                </div>
-                <span style={{ fontSize: 12, color: "#888" }}>Invited</span>
-              </div>
-            )) : <p style={{ color: "#999", fontSize: 13 }}>No pending invitations.</p>}
-
-            <h4 style={{ margin: "12px 0 8px", fontSize: 13, color: "#666" }}>Available users</h4>
-            {users.filter(u => !project.memberIds.includes(u.id) && !project.invitedUserIds.includes(u.id)).map(user => (
-              <div key={user.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #eee" }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{user.username}</div>
-                  <div style={{ fontSize: 12, color: "#888" }}>{user.email}</div>
-                </div>
-                <button disabled={busyUserId === user.id} onClick={() => run(user.id, onAdd)} className="keycap-btn keycap-btn-outline" style={{ padding: "4px 10px", fontSize: 12 }}>Add</button>
-              </div>
-            ))}
-            {users.filter(u => !project.memberIds.includes(u.id) && !project.invitedUserIds.includes(u.id)).length === 0 && <p style={{ color: "#999", fontSize: 13 }}>All users are added or invited.</p>}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function ProjectsPage({ userId, username, onSelectProject, onLogout, onProfile, onDashboard }: Props) {
   const [projects, setProjects] = useState<ProjectRes[]>([]);
   const [users, setUsers] = useState<UserRes[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [membersProject, setMembersProject] = useState<ProjectRes | null>(null);
-  const [viewMembersProject, setViewMembersProject] = useState<ProjectRes | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; project: ProjectRes } | null>(null);
-
-  // Close context menu on click outside
-  useEffect(() => {
-    if (!ctxMenu) return;
-    const close = () => setCtxMenu(null);
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [ctxMenu]);
 
   const load = async () => {
     const loadedProjects = await projectApi.list();
     setProjects(loadedProjects);
-    if (membersProject) {
-      setMembersProject(loadedProjects.find(project => project.id === membersProject.id) || null);
-    }
   };
   useEffect(() => { load(); }, []);
   useEffect(() => {
@@ -119,63 +25,112 @@ export function ProjectsPage({ userId, username, onSelectProject, onLogout, onPr
 
   const create = async () => {
     if (!name) return;
-    await projectApi.create({ name, description, createdById: userId });
+    const p = await projectApi.create({ name, description, createdById: userId });
     setName(""); setDescription(""); setShowModal(false); load();
+    setSelectedId(p.id);
   };
 
-  const addMember = async (projectId: number, memberId: number) => {
-    await projectApi.inviteMember(projectId, memberId);
-    const updated = await projectApi.get(projectId);
-    setProjects(prev => prev.map(p => p.id === updated.id ? updated : p));
-    setMembersProject(updated);
-  };
-
-  const removeMember = async (projectId: number, memberId: number) => {
-    await projectApi.removeMember(projectId, memberId);
-    const updated = await projectApi.get(projectId);
-    setProjects(prev => prev.map(project => project.id === updated.id ? updated : project));
-    setMembersProject(updated);
-  };
+  const selectedProject = projects.find(p => p.id === selectedId) || null;
 
   return (
-    <div>
-      {/* Read-only members view */}
-      {viewMembersProject && (
-        <div onClick={() => setViewMembersProject(null)} className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div onClick={e => e.stopPropagation()} className="modal-content" style={{ background: "#fff", padding: 32, maxWidth: 400, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-              <h3 style={{ margin: 0 }}>{viewMembersProject.name}</h3>
-              <button onClick={() => setViewMembersProject(null)} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#999" }}>x</button>
-            </div>
-            <p style={{ margin: "0 0 12px", color: "#666", fontSize: 14 }}>Members ({viewMembersProject.memberIds.length})</p>
-            {users.filter(u => viewMembersProject.memberIds.includes(u.id)).map(user => (
-              <div key={user.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #eee" }}>
-                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#222", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: "bold" }}>
-                  {user.username.charAt(0).toUpperCase()}
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+      <NavBar username={username} onSelectProject={onSelectProject} onProfile={onProfile} onLogout={onLogout} onMenuToggle={onDashboard} />
+
+      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
+        {/* Left sidebar */}
+        <div style={{ width: 240, borderRight: "1px solid #eee", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+          <div style={{ padding: "16px 12px 8px" }}>
+            <button onClick={() => setShowModal(true)} className="keycap-btn keycap-btn-solid" style={{ width: "100%", fontSize: 13, padding: "8px 0" }}>+ New Project</button>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "4px 8px" }}>
+            {projects.map(p => {
+              const memberUsers = users.filter(u => p.memberIds.includes(u.id));
+              const displayMembers = memberUsers.slice(0, 2);
+              const overflow = memberUsers.length - 2;
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => setSelectedId(p.id)}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    background: selectedId === p.id ? "#f0f0f0" : "transparent",
+                    marginBottom: 2,
+                    transition: "background 0.1s ease",
+                  }}
+                  onMouseEnter={e => { if (selectedId !== p.id) e.currentTarget.style.background = "#f5f5f5"; }}
+                  onMouseLeave={e => { if (selectedId !== p.id) e.currentTarget.style.background = "transparent"; }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#222", marginBottom: 4 }}>{p.name}</div>
+                  {p.description && <div style={{ fontSize: 12, color: "#888", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.description}</div>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    {displayMembers.map((u, i) => (
+                      <div key={u.id} style={{ width: 20, height: 20, borderRadius: "50%", background: i === 0 ? "#222" : "#555", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: "bold", marginLeft: i > 0 ? -6 : 0, border: "1px solid #fff" }}>
+                        {u.username.charAt(0).toUpperCase()}
+                      </div>
+                    ))}
+                    {overflow > 0 && <span style={{ fontSize: 10, color: "#999", marginLeft: 2 }}>+{overflow}</span>}
+                    {memberUsers.length === 0 && <span style={{ fontSize: 11, color: "#bbb" }}>No members</span>}
+                  </div>
                 </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{user.username}</div>
-                  <div style={{ fontSize: 12, color: "#888" }}>{user.email}</div>
-                </div>
-                <span style={{ marginLeft: "auto", fontSize: 12, color: "#777" }}>
-                  {viewMembersProject.adminIds.includes(user.id) ? "Admin" : "Executor"}
-                </span>
-              </div>
-            ))}
+              );
+            })}
+            {projects.length === 0 && <p style={{ color: "#999", fontSize: 13, textAlign: "center", marginTop: 24 }}>No projects yet.</p>}
           </div>
         </div>
-      )}
 
-      {membersProject && (
-        <MembersModal
-          project={membersProject}
-          users={users}
-          onClose={() => setMembersProject(null)}
-          onAdd={memberId => addMember(membersProject.id, memberId)}
-          onRemove={memberId => removeMember(membersProject.id, memberId)}
-        />
-      )}
+        {/* Right panel */}
+        <div style={{ flex: 1, overflowY: "auto", padding: 32 }}>
+          {error && <p style={{ color: "red", fontSize: 14, marginBottom: 12 }}>{error}</p>}
 
+          {!selectedProject && projects.length > 0 && (
+            <div style={{ textAlign: "center", marginTop: 80, color: "#999" }}>
+              <p style={{ fontSize: 15 }}>Select a project from the sidebar</p>
+            </div>
+          )}
+
+          {!selectedProject && projects.length === 0 && (
+            <div style={{ textAlign: "center", marginTop: 80, color: "#999" }}>
+              <p style={{ fontSize: 15, marginBottom: 16 }}>No projects yet</p>
+              <button onClick={() => setShowModal(true)} className="keycap-btn keycap-btn-solid" style={{ fontSize: 14, padding: "10px 24px" }}>+ Create your first project</button>
+            </div>
+          )}
+
+          {selectedProject && (
+            <div style={{ maxWidth: 600 }}>
+              <h2 style={{ margin: "0 0 4px" }}>{selectedProject.name}</h2>
+              <p style={{ color: "#666", fontSize: 14, margin: "0 0 24px", lineHeight: 1.5 }}>{selectedProject.description || "No description"}</p>
+
+              <div style={{ marginBottom: 24 }}>
+                <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "#666" }}>Members ({selectedProject.memberIds.length})</h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {users.filter(u => selectedProject.memberIds.includes(u.id)).map(user => (
+                    <div key={user.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#222", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: "bold" }}>
+                        {user.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 500 }}>{user.username}</div>
+                        <div style={{ fontSize: 12, color: "#888" }}>{user.email}</div>
+                      </div>
+                      <span style={{ marginLeft: "auto", fontSize: 12, color: "#777" }}>
+                        {selectedProject.adminIds.includes(user.id) ? "Admin" : "Member"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button onClick={() => onSelectProject(selectedProject.id)} className="keycap-btn keycap-btn-solid" style={{ fontSize: 14, padding: "10px 24px" }}>
+                Open project →
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* New Project modal */}
       {showModal && (
         <div onClick={() => setShowModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "#fff", padding: 32, maxWidth: 450, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
@@ -189,62 +144,6 @@ export function ProjectsPage({ userId, username, onSelectProject, onLogout, onPr
           </div>
         </div>
       )}
-
-      <NavBar page="projects" username={username} onDashboard={onDashboard} onSelectProject={onSelectProject} onProfile={onProfile} onLogout={onLogout} />
-
-      {/* Context menu */}
-      {ctxMenu && (
-        <div style={{ position: "fixed", left: ctxMenu.x, top: ctxMenu.y, zIndex: 2000, background: "#fff", border: "1px solid #222", boxShadow: "0 3px 0 #000, 0 4px 12px rgba(0,0,0,0.12)", minWidth: 160 }}>
-          <button
-            onClick={async () => {
-              const p = ctxMenu.project;
-              setCtxMenu(null);
-              try { await projectApi.delete(p.id); load(); }
-              catch (err) { alert(err instanceof Error ? err.message : "Failed to delete"); }
-            }}
-            className="keycap-btn keycap-btn-outline"
-            style={{ width: "100%", padding: "8px 16px", fontSize: 13, textAlign: "left" }}
-          >
-            Delete project
-          </button>
-        </div>
-      )}
-
-      {/* Content */}
-      <div style={{ maxWidth: 700, margin: "0 auto", padding: "24px 24px 24px" }}>
-        <button onClick={() => setShowModal(true)} className="keycap-btn keycap-btn-solid" style={{ marginBottom: 16 }}>+ New Project</button>
-        {error && <p style={{ color: "red", fontSize: 14, marginBottom: 12 }}>{error}</p>}
-
-        {projects.map(p => {
-          const memberUsers = users.filter(u => p.memberIds.includes(u.id));
-          const displayMembers = memberUsers.slice(0, 3);
-          const overflow = memberUsers.length - 3;
-          return (
-          <div key={p.id} onClick={() => onSelectProject(p.id)} onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, project: p }); }} className="keycap-card">
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-              <div>
-                <strong>{p.name}</strong>
-                {p.description && <p style={{ margin: "2px 0 0", color: "#666", fontSize: 13 }}>{p.description}</p>}
-              </div>
-              <div onClick={e => { e.stopPropagation(); setViewMembersProject(p); }} style={{ display: "flex", alignItems: "center", gap: 2, cursor: "pointer" }}>
-                {displayMembers.map((u, i) => (
-                  <div key={u.id} style={{ width: 28, height: 28, borderRadius: "50%", background: i === 0 ? "#222" : i === 1 ? "#555" : "#888", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: "bold", marginLeft: i > 0 ? -8 : 0, border: "1px solid #fff" }}>
-                    {u.username.charAt(0).toUpperCase()}
-                  </div>
-                ))}
-                {overflow > 0 && (
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#ccc", color: "#333", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: "bold", marginLeft: -8, border: "1px solid #fff" }}>
-                    +{overflow}
-                  </div>
-                )}
-                {memberUsers.length === 0 && <div style={{ fontSize: 12, color: "#999" }}>0 members</div>}
-              </div>
-            </div>
-          </div>
-          );
-        })}
-        {projects.length === 0 && <p style={{ color: "#999", textAlign: "center", marginTop: 40 }}>No projects yet.</p>}
-      </div>
     </div>
   );
 }

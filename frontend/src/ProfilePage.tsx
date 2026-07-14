@@ -2,9 +2,9 @@ import { useState } from "react";
 import { getApiKey, setApiKey } from "./api";
 import { NavBar } from "./NavBar";
 
-interface Props { username: string; email: string; onBack: () => void; onLogout: () => void; onDashboard?: () => void; onProjects?: () => void }
+interface Props { username: string; email: string; onBack: () => void; onLogout: () => void; onDashboard?: () => void; onProjects?: () => void; onMenuToggle?: () => void }
 
-export function ProfilePage({ username, email, onBack, onLogout, onDashboard, onProjects }: Props) {
+export function ProfilePage({ username, email, onBack, onLogout, onDashboard, onProjects, onMenuToggle }: Props) {
   const [apiKey, setKey] = useState(getApiKey());
   const [saved, setSaved] = useState(false);
 
@@ -16,7 +16,7 @@ export function ProfilePage({ username, email, onBack, onLogout, onDashboard, on
 
   return (
     <div>
-      <NavBar page="profile" username={username} onDashboard={onDashboard} onProjects={onProjects} onProfile={() => {}} onLogout={onLogout} />
+      <NavBar username={username} onProfile={() => {}} onLogout={onLogout} onMenuToggle={onMenuToggle} />
 
       {/* Content */}
       <div style={{ padding: 24 }}>

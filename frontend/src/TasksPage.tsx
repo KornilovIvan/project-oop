@@ -19,7 +19,7 @@ const userPalette = [
   { bg: "#ecf5f0", border: "#b5dbc8" },
 ];
 
-interface Props { projectId: number; userId: number; username?: string; onBack: () => void; onDashboard?: () => void; onProjects?: () => void; onProfile?: () => void; onLogout?: () => void }
+interface Props { projectId: number; userId: number; username?: string; onBack: () => void; onDashboard?: () => void; onProjects?: () => void; onProfile?: () => void; onLogout?: () => void; onMenuToggle?: () => void }
 
 function CreateTaskModal({
   users,
@@ -93,7 +93,7 @@ function CreateTaskModal({
   );
 }
 
-export function TasksPage({ projectId, userId, username, onBack, onDashboard, onProjects, onProfile, onLogout }: Props) {
+export function TasksPage({ projectId, userId, username, onBack, onDashboard, onProjects, onProfile, onLogout, onMenuToggle }: Props) {
   const [tasks, setTasks] = useState<TaskRes[]>([]);
   const [project, setProject] = useState<ProjectRes | null>(null);
   const [users, setUsers] = useState<UserRes[]>([]);
@@ -175,7 +175,7 @@ export function TasksPage({ projectId, userId, username, onBack, onDashboard, on
         />
       )}
 
-      <NavBar page="tasks" username={username} onDashboard={onDashboard} onProjects={onProjects} onSelectProject={onDashboard ?? undefined} onProfile={onProfile} onLogout={onLogout} style={{ paddingRight: detailTask ? 444 : 24, transition: "padding-right 0.15s ease" }} />
+      <NavBar username={username} onSelectProject={onDashboard ?? undefined} onProfile={onProfile} onLogout={onLogout} onMenuToggle={onMenuToggle} style={{ paddingRight: detailTask ? 444 : 24, transition: "padding-right 0.15s ease" }} />
 
       {/* Members modal */}
       {membersProject && (

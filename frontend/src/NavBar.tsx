@@ -2,24 +2,17 @@ import { useState, useRef, useEffect } from "react";
 import { NotificationBell } from "./NotificationBell";
 
 interface Props {
-  page: "dashboard" | "projects" | "tasks" | "profile";
   username?: string;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
-  onDashboard?: () => void;
-  onProjects?: () => void;
   onSelectProject?: (projectId: number) => void;
   onProfile?: () => void;
   onLogout?: () => void;
+  onMenuToggle?: () => void;
   style?: React.CSSProperties;
 }
 
-const tabs = [
-  { key: "dashboard", label: "Home" },
-  { key: "projects", label: "My Projects" },
-] as const;
-
-export function NavBar({ page, username, searchQuery, onSearchChange, onDashboard, onProjects, onSelectProject, onProfile, onLogout, style }: Props) {
+export function NavBar({ username, searchQuery, onSearchChange, onSelectProject, onProfile, onLogout, onMenuToggle, style }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -30,37 +23,13 @@ export function NavBar({ page, username, searchQuery, onSearchChange, onDashboar
     return () => document.removeEventListener("mousedown", close);
   }, [menuOpen]);
 
-  const nav = (key: string) => {
-    if (key === "dashboard" && onDashboard) onDashboard();
-    else if (key === "projects" && onProjects) onProjects();
-  };
-
   return (
     <div style={{ padding: "0 24px", borderBottom: "1px solid #eee", background: "#fff", position: "sticky", top: 0, zIndex: 50, ...style }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", height: 56 }}>
-        {/* Left: nav tabs */}
-        <div style={{ display: "flex", gap: 0, height: "100%" }}>
-          {tabs.map(tab => (
-            <button
-              key={tab.key}
-              onClick={page === tab.key ? undefined : () => nav(tab.key)}
-              style={{
-                background: "none",
-                border: "none",
-                borderBottom: page === tab.key ? "2px solid #222" : "2px solid transparent",
-                padding: "0 16px",
-                fontSize: 14,
-                fontWeight: page === tab.key ? 600 : 400,
-                color: page === tab.key ? "#222" : "#888",
-                cursor: page === tab.key ? "default" : "pointer",
-                transition: "border-color 0.15s ease, color 0.15s ease",
-                height: "100%",
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Left: hamburger menu */}
+        <button onClick={onMenuToggle} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", padding: "4px 8px", color: "#555", lineHeight: 1 }}>
+          ☰
+        </button>
 
         {/* Center: search */}
         {onSearchChange && (
@@ -87,7 +56,7 @@ export function NavBar({ page, username, searchQuery, onSearchChange, onDashboar
         )}
 
         {/* Right: bell + avatar */}
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", marginLeft: "auto" }}>
           {onSelectProject && <NotificationBell onAccept={onSelectProject} />}
           <div ref={menuRef} style={{ position: "relative" }}>
             <button

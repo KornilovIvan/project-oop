@@ -23,12 +23,12 @@ interface Props {
   userId: number;
   username: string;
   onSelectProject: (projectId: number) => void;
-  onProjects: () => void;
   onProfile: () => void;
   onLogout: () => void;
+  onMenuToggle?: () => void;
 }
 
-export function DashboardPage({ userId, username, onSelectProject, onProjects, onProfile, onLogout }: Props) {
+export function DashboardPage({ userId, username, onSelectProject, onProfile, onLogout, onMenuToggle }: Props) {
   const [tasks, setTasks] = useState<TaskWithProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusError, setStatusError] = useState("");
@@ -71,7 +71,7 @@ export function DashboardPage({ userId, username, onSelectProject, onProjects, o
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <NavBar page="dashboard" username={username} onProjects={onProjects} onSelectProject={onSelectProject} onProfile={onProfile} onLogout={onLogout} style={{ paddingRight: detailTask ? 444 : 24, transition: "padding-right 0.15s ease" }} />
+      <NavBar username={username} onSelectProject={onSelectProject} onProfile={onProfile} onLogout={onLogout} onMenuToggle={onMenuToggle} style={{ paddingRight: detailTask ? 444 : 24, transition: "padding-right 0.15s ease" }} />
 
       {/* Header */}
       <div style={{ padding: "16px 24px 0" }}>
@@ -80,7 +80,7 @@ export function DashboardPage({ userId, username, onSelectProject, onProjects, o
         {statusError && <p style={{ color: "red", fontSize: 14, marginTop: 8 }}>{statusError}</p>}
       </div>
 
-      {/* Columns area — scales when panel opens */}
+      {/* Columns area */}
       {loading ? (
         <p style={{ color: "#999", textAlign: "center", marginTop: 40 }}>Loading tasks...</p>
       ) : tasks.length === 0 ? (
@@ -135,11 +135,7 @@ export function DashboardPage({ userId, username, onSelectProject, onProjects, o
                           {t.description && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#888" }}>{t.description}</p>}
                           <div style={{ marginTop: 8, fontSize: 12, color: "#777" }}>
                             Project:{" "}
-                            <a
-                              href="#"
-                              onClick={e => { e.preventDefault(); e.stopPropagation(); onSelectProject(t.projectId); }}
-                              style={{ color: "#222", textDecoration: "underline", textUnderlineOffset: 2 }}
-                            >
+                            <a href="#" onClick={e => { e.preventDefault(); e.stopPropagation(); onSelectProject(t.projectId); }} style={{ color: "#222", textDecoration: "underline", textUnderlineOffset: 2 }}>
                               {t.projectName}
                             </a>
                           </div>
@@ -160,7 +156,7 @@ export function DashboardPage({ userId, username, onSelectProject, onProjects, o
         </div>
       )}
 
-      {/* Side panel — animated with Framer Motion */}
+      {/* Task detail panel */}
       <AnimatePresence>
         {detailTask && (
           <motion.div
