@@ -1,6 +1,4 @@
-import { useState, useEffect } from "react";
-import { userApi } from "./api";
-import type { UserRes } from "./api";
+import { useState } from "react";
 import { LoginPage } from "./LoginPage";
 import { DashboardPage } from "./DashboardPage";
 import { ProjectsPage } from "./ProjectsPage";
@@ -46,11 +44,6 @@ const nav = (setPage: React.Dispatch<React.SetStateAction<Page>>, p: Page) => {
 function App() {
   const [page, setPage] = useState<Page>(initPage);
   const [showProjects, setShowProjects] = useState(false);
-  const [users, setUsers] = useState<UserRes[]>([]);
-
-  useEffect(() => {
-    userApi.list().then(setUsers).catch(() => {});
-  }, []);
 
   const s = (): NonNullable<ReturnType<typeof getSession>> => {
     const session = getSession();
@@ -84,14 +77,15 @@ function App() {
         <DashboardPage userId={page.userId} username={page.username} onSelectProject={handleSelectProject} onProfile={() => nav(setPage, { name: "profile", userId: s().userId, username: s().username, email: s().email })} onLogout={() => { localStorage.clear(); setPage({ name: "login" }); }} onMenuToggle={toggleProjects} />
       )}
 
-      <ProjectSidebar
-        show={showProjects}
-        onClose={() => setShowProjects(false)}
-        currentProjectId={currentProjectId}
-        onSelectProject={handleSelectProject}
-        userId={s().userId}
-        users={users}
-      />
+      {page.name === "dashboard" || page.name === "tasks" || page.name === "profile" || page.name === "projects" ? (
+        <ProjectSidebar
+          show={showProjects}
+          onClose={() => setShowProjects(false)}
+          currentProjectId={currentProjectId}
+          onSelectProject={handleSelectProject}
+          userId={page.userId}
+        />
+      ) : null}
     </>
   );
 }

@@ -3,9 +3,9 @@ import { projectApi, userApi } from "./api";
 import type { ProjectRes, UserRes } from "./api";
 import { NavBar } from "./NavBar";
 
-interface Props { userId: number; username?: string; onSelectProject: (projectId: number) => void; onLogout: () => void; onProfile: () => void; onDashboard: () => void }
+interface Props { userId: number; username?: string; onSelectProject: (projectId: number) => void; onLogout: () => void; onProfile: () => void; onDashboard: () => void; onMenuToggle?: () => void }
 
-export function ProjectsPage({ userId, username, onSelectProject, onLogout, onProfile, onDashboard }: Props) {
+export function ProjectsPage({ userId, username, onSelectProject, onLogout, onProfile, onDashboard, onMenuToggle }: Props) {
   const [projects, setProjects] = useState<ProjectRes[]>([]);
   const [users, setUsers] = useState<UserRes[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -34,7 +34,7 @@ export function ProjectsPage({ userId, username, onSelectProject, onLogout, onPr
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <NavBar username={username} onSelectProject={onSelectProject} onProfile={onProfile} onLogout={onLogout} onMenuToggle={onDashboard} />
+      <NavBar username={username} onSelectProject={onSelectProject} onProfile={onProfile} onLogout={onLogout} onMenuToggle={onMenuToggle} />
 
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         {/* Left sidebar */}

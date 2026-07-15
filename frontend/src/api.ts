@@ -140,8 +140,11 @@ async function req<T>(url: string, body?: unknown, method?: string): Promise<T> 
     body: body ? JSON.stringify(body) : undefined,
   });
   if (r.status === 401) {
+    const hadToken = !!localStorage.getItem("accessToken");
     localStorage.clear();
-    window.location.reload();
+    if (hadToken) {
+      window.location.reload();
+    }
     throw new Error("Session expired");
   }
   if (!r.ok) {

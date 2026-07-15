@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { projectApi } from "./api";
+import { projectApi, userApi } from "./api";
 import type { ProjectRes, UserRes } from "./api";
 
 interface Props {
@@ -9,18 +9,21 @@ interface Props {
   currentProjectId?: number | null;
   onSelectProject: (projectId: number) => void;
   userId: number;
-  users: UserRes[];
 }
 
-export function ProjectSidebar({ show, onClose, currentProjectId, onSelectProject, userId, users }: Props) {
+export function ProjectSidebar({ show, onClose, currentProjectId, onSelectProject, userId }: Props) {
   const [projects, setProjects] = useState<ProjectRes[]>([]);
+  const [users, setUsers] = useState<UserRes[]>([]);
   const [viewMembers, setViewMembers] = useState<ProjectRes | null>(null);
   const [showNewProject, setShowNewProject] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
 
   useEffect(() => {
-    if (show) projectApi.list().then(setProjects).catch(() => {});
+    if (show) {
+      projectApi.list().then(setProjects).catch(() => {});
+      userApi.list().then(setUsers).catch(() => {});
+    }
   }, [show]);
 
   return (
