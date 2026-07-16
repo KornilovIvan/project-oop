@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getAllTasks, taskApi, userApi } from "./api";
 import type { TaskWithProject, UserRes } from "./api";
-import { columns, priorityLabels, priorityColors } from "./taskConstants";
+import { columns } from "./taskConstants";
 import { TaskDetailModal } from "./TaskDetailPanel";
 import { NavBar } from "./NavBar";
 
@@ -47,6 +47,13 @@ export function DashboardPage({ userId, username, onSelectProject, onProfile, on
     }
   };
 
+  const refresh = async () => {
+    try {
+      const all = await getAllTasks();
+      setTasks(all.filter(t => t.assigneeId === userId));
+    } catch { /* ignore */ }
+  };
+
   useEffect(() => { load(); }, []);
   useEffect(() => {
     userApi.list().then(setUsers).catch(e => setStatusError(e instanceof Error ? e.message : "Failed to load users"));
@@ -56,15 +63,24 @@ export function DashboardPage({ userId, username, onSelectProject, onProfile, on
     try {
       setStatusError("");
       await taskApi.changeStatus(taskId, { status });
-      await load();
+      await refresh();
     } catch (error: unknown) {
       setStatusError(error instanceof Error ? error.message : "Failed to change status");
     }
   };
 
-  const onDragStart = (e: React.DragEvent, taskId: number) => { e.dataTransfer.setData("text/plain", String(taskId)); };
+  const onDragStart = (e: React.DragEvent, taskId: number) => {
+    e.dataTransfer.setData("text/plain", String(taskId));
+    e.dataTransfer.effectAllowed = "move";
+    (e.currentTarget as HTMLElement).classList.add("dragging");
+  };
+  const onDragEnd = (e: React.DragEvent) => {
+    (e.currentTarget as HTMLElement).classList.remove("dragging");
+    document.querySelectorAll(".column-drop-zone").forEach(el => el.classList.remove("drag-over"));
+  };
   const onDrop = (e: React.DragEvent, newStatus: number) => {
     e.preventDefault();
+    document.querySelectorAll(".column-drop-zone").forEach(el => el.classList.remove("drag-over"));
     const taskId = Number(e.dataTransfer.getData("text/plain"));
     changeStatus(taskId, newStatus);
   };
@@ -116,7 +132,7 @@ export function DashboardPage({ userId, username, onSelectProject, onProfile, on
               if (groups.has(name)) colorMap.set(name, globalColorMap.get(name)!);
             });
             return (
-              <div key={col.key} onDragOver={e => e.preventDefault()} onDrop={e => onDrop(e, col.key)} style={{ flex: "1 1 0%", minWidth: 180, background: "#f5f5f5", padding: "12px 12px 0", display: "flex", flexDirection: "column" }}>
+              <div key={col.key} className="column-drop-zone" onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("drag-over"); }} onDragLeave={e => e.currentTarget.classList.remove("drag-over")} onDrop={e => onDrop(e, col.key)}>
                 <h3 style={{ margin: "0 0 12px", fontSize: 15, color: "#000", flexShrink: 0 }}>{col.title} ({colTasks.length})</h3>
                 <div style={{ overflowY: "auto", flex: 1, paddingBottom: 32 }}>
                 {projectNames.map(pname => {
@@ -127,15 +143,11 @@ export function DashboardPage({ userId, username, onSelectProject, onProfile, on
                         {pname} ({groups.get(pname)!.length})
                       </div>
                       {groups.get(pname)!.map(t => (
-                        <div key={t.id} draggable onDragStart={e => onDragStart(e, t.id)} onClick={() => setDetailTask(detailTask?.id === t.id ? null : t)} className="keycap-card" style={{ padding: 12, marginBottom: 8 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <strong style={{ fontSize: 14 }}>{t.title}</strong>
-                            <span style={{ fontSize: 11, padding: "2px 6px", background: priorityColors[t.priority] || "#999", color: "#fff" }}>{priorityLabels[t.priority] || "?"}</span>
-                          </div>
-                          {t.description && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#888" }}>{t.description}</p>}
-                          <div style={{ marginTop: 8, fontSize: 12, color: "#777" }}>
-                            Project:{" "}
-                            <a href="#" onClick={e => { e.preventDefault(); e.stopPropagation(); onSelectProject(t.projectId); }} style={{ color: "#222", textDecoration: "underline", textUnderlineOffset: 2 }}>
+                        <div key={t.id} draggable onDragStart={e => onDragStart(e, t.id)} onDragEnd={onDragEnd} onClick={() => setDetailTask(detailTask?.id === t.id ? null : t)} className="task-card">
+                          <strong style={{ fontSize: 14 }}>{t.title}</strong>
+                          {t.description && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#999", lineHeight: 1.4 }}>{t.description}</p>}
+                          <div className="task-card-footer">
+                            <a href="#" onClick={e => { e.preventDefault(); e.stopPropagation(); onSelectProject(t.projectId); }} style={{ color: "#555", textDecoration: "none" }}>
                               {t.projectName}
                             </a>
                           </div>
