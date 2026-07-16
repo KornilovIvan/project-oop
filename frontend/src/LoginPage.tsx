@@ -36,9 +36,10 @@ export function LoginPage({ onLogin }: Props) {
   return (
     <div style={{ maxWidth: 400, margin: "80px auto", padding: 32, border: "1px solid #ddd" }}>
       <h2 style={{ textAlign: "center", marginBottom: 24 }}>Task Management</h2>
-      <div style={{ display: "flex", marginBottom: 24 }}>
-        <button onClick={() => setTab("login")} className={`keycap-btn ${tab === "login" ? "keycap-btn-solid" : "keycap-btn-outline"}`} style={{ flex: 1, padding: 10, fontSize: 16 }}>Login</button>
-        <button onClick={() => setTab("register")} className={`keycap-btn ${tab === "register" ? "keycap-btn-solid" : "keycap-btn-outline"}`} style={{ flex: 1, padding: 10, fontSize: 16 }}>Register</button>
+      <div className="tab-bar">
+        <button onClick={() => setTab("login")} className={`tab-btn ${tab === "login" ? "active" : ""}`}>Login</button>
+        <button onClick={() => setTab("register")} className={`tab-btn ${tab === "register" ? "active" : ""}`}>Register</button>
+        <div className={`tab-underline ${tab === "register" ? "right" : ""}`} />
       </div>
 
       {tab === "login" ? (

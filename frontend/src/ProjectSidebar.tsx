@@ -30,15 +30,26 @@ export function ProjectSidebar({ show, onClose, currentProjectId, onSelectProjec
     <>
       <AnimatePresence>
         {show && (
-          <motion.div
-            key="projects-sidebar"
-            initial={{ x: -300 }}
-            animate={{ x: 0 }}
-            exit={{ x: -300 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            style={{ position: "fixed", top: 0, left: 0, width: 300, height: "100vh", borderRight: "1px solid #e0e0e0", overflowY: "auto", background: "#fff", zIndex: 90, boxShadow: "4px 0 12px rgba(0,0,0,0.06)" }}
-          >
-            <div style={{ padding: 20, display: "flex", flexDirection: "column", height: "100%" }}>
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="projects-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1, ease: [0.25, 0.1, 0.25, 1] }}
+              onClick={onClose}
+              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 89 }}
+            />
+            <motion.div
+              key="projects-sidebar"
+              initial={{ x: -320 }}
+              animate={{ x: 0 }}
+              exit={{ x: -320 }}
+              transition={{ type: "tween", duration: 0.18, ease: [0.25, 0.1, 0.25, 1] }}
+              style={{ position: "fixed", top: 8, left: 8, width: 300, height: "calc(100vh - 16px)", borderRadius: 12, overflow: "hidden", background: "#fff", zIndex: 90, boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)" }}
+            >
+            <div style={{ height: "100%", overflowY: "auto", overflowX: "hidden", padding: 20, display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <h3 style={{ margin: 0, fontSize: 16 }}>Projects</h3>
                 <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#999" }}>×</button>
@@ -60,12 +71,11 @@ export function ProjectSidebar({ show, onClose, currentProjectId, onSelectProjec
                         key={p.id}
                         onClick={() => { onClose(); onSelectProject(p.id); }}
                         style={{
-                          padding: "12px 0 12px 12px",
+                          padding: "12px",
                           borderBottom: "1px solid #f0f0f0",
                           cursor: "pointer",
                           borderLeft: isActive ? "3px solid #222" : "3px solid transparent",
-                          margin: "0 -12px 0 0",
-                          paddingRight: 12,
+                          paddingLeft: isActive ? 9 : 12,
                         }}
                         onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "#fafafa"; }}
                         onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
@@ -94,6 +104,7 @@ export function ProjectSidebar({ show, onClose, currentProjectId, onSelectProjec
               </div>
             </div>
           </motion.div>
+        </>
         )}
       </AnimatePresence>
 
