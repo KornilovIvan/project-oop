@@ -190,13 +190,16 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
         style={{ width: "100%", padding: 10, border: "1px solid #ddd", fontSize: 13, boxSizing: "border-box", resize: "vertical", fontFamily: "inherit", lineHeight: 1.5 }}
       />
 
+      {/* Labels separator */}
+      <hr style={{ border: "none", borderTop: "1px solid #eee", margin: "4px 0" }} />
+
       {/* Metadata */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ color: "#888", minWidth: 70 }}>Status</span>
-          <span style={{ color: "#999" }}>→</span>
+          <span style={{ color: "#444", minWidth: 70, fontWeight: 500 }}>Status</span>
+          <span style={{ color: "#ccc" }}>→</span>
           {canChangeStatus ? (
-            <select value={task.status} onChange={e => handleStatusChange(Number(e.target.value))} className="keycap-btn keycap-btn-outline" style={{ flex: 1, fontSize: 13, padding: "6px 8px", cursor: "pointer" }}>
+            <select value={task.status} onChange={e => handleStatusChange(Number(e.target.value))} style={{ flex: 1, padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13, cursor: "pointer", background: "#fff" }}>
               {columns.map(col => <option key={col.key} value={col.key}>{col.title}</option>)}
             </select>
           ) : (
@@ -204,10 +207,10 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ color: "#888", minWidth: 70 }}>Priority</span>
-          <span style={{ color: "#999" }}>→</span>
+          <span style={{ color: "#444", minWidth: 70, fontWeight: 500 }}>Priority</span>
+          <span style={{ color: "#ccc" }}>→</span>
           {canChangeStatus ? (
-            <select value={task.priority} onChange={e => handlePriorityChange(Number(e.target.value))} className="keycap-btn keycap-btn-outline" style={{ flex: 1, fontSize: 13, padding: "6px 8px", cursor: "pointer" }}>
+            <select value={task.priority} onChange={e => handlePriorityChange(Number(e.target.value))} style={{ flex: 1, padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13, cursor: "pointer", background: "#fff" }}>
               <option value={1}>Low</option>
               <option value={2}>Medium</option>
               <option value={3}>High</option>
@@ -218,10 +221,10 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ color: "#888", minWidth: 70 }}>Assignee</span>
-          <span style={{ color: "#999" }}>→</span>
+          <span style={{ color: "#444", minWidth: 70, fontWeight: 500 }}>Assignee</span>
+          <span style={{ color: "#ccc" }}>→</span>
           {canChangeAssignee ? (
-            <select value={task.assigneeId} onChange={e => handleAssigneeChange(Number(e.target.value))} className="keycap-btn keycap-btn-outline" style={{ flex: 1, fontSize: 13, padding: "6px 8px", cursor: "pointer" }}>
+            <select value={task.assigneeId} onChange={e => handleAssigneeChange(Number(e.target.value))} style={{ flex: 1, padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13, cursor: "pointer", background: "#fff" }}>
               {users.filter(u => !memberIds || memberIds.includes(u.id)).map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
             </select>
           ) : (
@@ -230,13 +233,15 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
         </div>
       </div>
 
+      <hr style={{ border: "none", borderTop: "1px solid #eee", margin: "4px 0" }} />
+
       {/* Actions */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        <button onClick={() => { setShowAi(!showAi); }} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, padding: "6px 12px" }}>
-          {showAi ? "Close AI" : "✨ AI"}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button onClick={() => { setShowAi(!showAi); }} style={{ padding: "8px 14px", fontSize: 12, border: showAi ? "1px solid #222" : "1px solid #ddd", borderRadius: 8, background: showAi ? "#222" : "transparent", color: showAi ? "#fff" : "#555", cursor: "pointer", transition: "all 0.1s ease", fontWeight: 500 }}>
+          ✨ AI
         </button>
-        <button onClick={() => { setShowSubtask(!showSubtask); if (!showSubtask) setSubtaskItems([]); }} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, padding: "6px 12px" }}>
-          {showSubtask ? "Close" : "Subtasks"}
+        <button onClick={() => { setShowSubtask(!showSubtask); if (!showSubtask) setSubtaskItems([]); }} style={{ padding: "8px 14px", fontSize: 12, border: showSubtask ? "1px solid #222" : "1px solid #ddd", borderRadius: 8, background: showSubtask ? "#222" : "transparent", color: showSubtask ? "#fff" : "#555", cursor: "pointer", transition: "all 0.1s ease", fontWeight: 500 }}>
+          Subtasks
         </button>
       </div>
 
@@ -244,22 +249,20 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
 
       {/* AI panel */}
       {showAi && (
-        <div style={{ padding: 12, background: "#fafafa", border: "1px solid #eee" }}>
-          <p style={{ fontSize: 13, color: "#555", margin: "0 0 8px" }}>Improve description with AI or give custom feedback.</p>
-          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-            <button onClick={handleAIApply} disabled={aiLoading} className="keycap-btn keycap-btn-solid" style={{ fontSize: 12, padding: "6px 12px" }}>
-              {aiLoading ? "..." : "Auto-improve"}
-            </button>
-          </div>
+        <div style={{ padding: 16, background: "#f7f7f7", border: "1px solid #e0e0e0", borderRadius: 10 }}>
+          <p style={{ fontSize: 13, color: "#333", margin: "0 0 12px", lineHeight: 1.5 }}>Improve description with AI or give custom feedback.</p>
+          <button onClick={handleAIApply} disabled={aiLoading} style={{ padding: "8px 16px", fontSize: 12, border: "1px solid #222", borderRadius: 8, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 500, marginBottom: 10, width: "100%" }}>
+            {aiLoading ? "Processing..." : "Auto-improve description"}
+          </button>
           <div style={{ display: "flex", gap: 6 }}>
             <input
               placeholder="Make it shorter, add details..."
               value={feedback}
               onChange={e => setFeedback(e.target.value)}
-              style={{ flex: 1, padding: "8px 10px", border: "1px solid #ddd", fontSize: 13, boxSizing: "border-box" }}
+              style={{ flex: 1, padding: "8px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13, boxSizing: "border-box" }}
             />
-            <button onClick={handleAIRegenerate} disabled={aiLoading || !feedback.trim()} className="keycap-btn keycap-btn-outline" style={{ fontSize: 12, whiteSpace: "nowrap", padding: "6px 12px" }}>
-              {aiLoading ? "..." : "Apply feedback"}
+            <button onClick={handleAIRegenerate} disabled={aiLoading || !feedback.trim()} style={{ padding: "8px 14px", fontSize: 12, border: "1px solid #ddd", borderRadius: 8, background: "transparent", color: "#555", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500, opacity: aiLoading || !feedback.trim() ? 0.5 : 1 }}>
+              {aiLoading ? "..." : "Apply"}
             </button>
           </div>
         </div>
@@ -267,26 +270,26 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
 
       {/* Subtasks */}
       {showSubtask && (
-        <div style={{ padding: 12, background: "#fafafa", border: "1px solid #eee" }}>
-          <p style={{ fontSize: 13, color: "#555", margin: "0 0 8px" }}>
+        <div style={{ padding: 16, background: "#f7f7f7", border: "1px solid #e0e0e0", borderRadius: 10 }}>
+          <p style={{ fontSize: 13, color: "#333", margin: "0 0 12px", lineHeight: 1.5 }}>
             AI will split this task into 3-5 smaller subtasks. Select which ones to add.
           </p>
-          <button onClick={handleSubtask} disabled={subtasksLoading} className="keycap-btn keycap-btn-solid" style={{ fontSize: 12, padding: "6px 12px" }}>
+          <button onClick={handleSubtask} disabled={subtasksLoading} style={{ padding: "8px 16px", fontSize: 12, border: "1px solid #222", borderRadius: 8, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 500, width: "100%" }}>
             {subtasksLoading ? "Generating..." : "Generate with AI"}
           </button>
           {subtaskItems.length > 0 && (
             <div style={{ marginTop: 12 }}>
               {subtaskItems.map(item => (
-                <div key={item.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 0", borderBottom: "1px solid #eee" }}>
+                <div key={item.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #e0e0e0" }}>
                   <input type="checkbox" checked={item.checked} onChange={() => toggleSubtask(item.id)} style={{ accentColor: "#222" }} />
                   <input
                     value={item.title}
                     onChange={e => updateSubtaskTitle(item.id, e.target.value)}
-                    style={{ flex: 1, padding: "6px 8px", border: "1px solid #ddd", fontSize: 13, boxSizing: "border-box" }}
+                    style={{ flex: 1, padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13, boxSizing: "border-box" }}
                   />
                 </div>
               ))}
-              <button onClick={addSelectedSubtasks} className="keycap-btn keycap-btn-solid" style={{ fontSize: 12, padding: "6px 12px", marginTop: 8 }}>
+              <button onClick={addSelectedSubtasks} style={{ padding: "8px 16px", fontSize: 12, border: "1px solid #222", borderRadius: 8, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 500, marginTop: 10, width: "100%" }}>
                 Add selected ({subtaskItems.filter(i => i.checked).length})
               </button>
             </div>

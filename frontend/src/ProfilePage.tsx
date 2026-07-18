@@ -20,45 +20,59 @@ export function ProfilePage({ username, email, onBack, onLogout, onDashboard, on
 
       {/* Content */}
       <div style={{ padding: 24 }}>
-        <div style={{ maxWidth: 500, margin: "40px auto", padding: 32, border: "1px solid #e0e0e0", background: "#fafafa", boxShadow: "0 2px 0 #d0d0d0, 0 1px 3px rgba(0,0,0,0.04)" }}>
-          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#222", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: "bold", margin: "0 auto 24px" }}>
-            {username.charAt(0).toUpperCase()}
+        <div style={{ maxWidth: 460, margin: "40px auto" }}>
+          {/* Avatar + name */}
+          <div style={{ textAlign: "center", marginBottom: 32 }}>
+            <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#222", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, fontWeight: "bold", margin: "0 auto 16px" }}>
+              {username.charAt(0).toUpperCase()}
+            </div>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>{username}</h2>
           </div>
-          <h2 style={{ textAlign: "center", margin: "0 0 24px" }}>{username}</h2>
-          <div style={{ marginBottom: 16, padding: "12px 16px", background: "#fff", border: "1px solid #e0e0e0" }}>
-            <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>USERNAME</div>
-            <div style={{ fontSize: 16 }}>{username}</div>
+
+          {/* Info cards */}
+          <div style={{ marginBottom: 12, padding: "14px 16px", background: "#fff", border: "1px solid #e8e8e8", borderRadius: 4 }}>
+            <div style={{ fontSize: 11, color: "#999", marginBottom: 4, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Username</div>
+            <div style={{ fontSize: 15, fontWeight: 500 }}>{username}</div>
           </div>
-          <div style={{ marginBottom: 16, padding: "12px 16px", background: "#fff", border: "1px solid #e0e0e0" }}>
-            <div style={{ fontSize: 12, color: "#999", marginBottom: 4 }}>EMAIL</div>
-            <div style={{ fontSize: 16 }}>{email}</div>
+          <div style={{ marginBottom: 20, padding: "14px 16px", background: "#fff", border: "1px solid #e8e8e8", borderRadius: 4 }}>
+            <div style={{ fontSize: 11, color: "#999", marginBottom: 4, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Email</div>
+            <div style={{ fontSize: 15, fontWeight: 500 }}>{email}</div>
           </div>
 
           {/* API Key section */}
-          <div style={{ marginBottom: 24, padding: "12px 16px", background: "#fff", border: "1px solid #e0e0e0" }}>
-            <div style={{ fontSize: 12, color: "#999", marginBottom: 8 }}>API KEY (for AI features)</div>
+          <div style={{ marginBottom: 24, padding: "14px 16px", background: "#fff", border: "1px solid #e8e8e8", borderRadius: 4 }}>
+            <div style={{ fontSize: 11, color: "#999", marginBottom: 8, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>API Key (for AI features)</div>
             <input
               type="password"
               placeholder="sk-..."
               value={apiKey}
               onChange={e => { setKey(e.target.value); setSaved(false); }}
-              style={{ width: "100%", padding: "10px 12px", marginBottom: 8, border: "1px solid #ddd", fontSize: 14, boxSizing: "border-box" }}
+              style={{ width: "100%", padding: "10px 12px", marginBottom: 8, border: "1px solid #ddd", borderRadius: 4, fontSize: 13, boxSizing: "border-box", outline: "none" }}
             />
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button onClick={handleSave} className="keycap-btn keycap-btn-solid" style={{ padding: "6px 16px", fontSize: 13 }}>
+              <button onClick={handleSave} style={{ padding: "8px 16px", fontSize: 12, border: "1px solid #222", borderRadius: 4, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 600, position: "relative", top: 0, boxShadow: "0 2px 0 #000", transition: "all 0.06s ease" }}
+                onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #000"; }}
+                onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #000"; }}>
                 {saved ? "Saved ✓" : "Save key"}
               </button>
               {apiKey && (
-                <span style={{ fontSize: 12, color: "#999" }}>
-                  Key is stored in your browser only
-                </span>
+                <span style={{ fontSize: 12, color: "#999" }}>Stored locally</span>
               )}
             </div>
           </div>
 
+          {/* Actions */}
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={onBack} className="keycap-btn keycap-btn-ghost" style={{ flex: 1 }}>← Back</button>
-            <button onClick={onLogout} className="keycap-btn keycap-btn-solid" style={{ flex: 1, padding: "10px 0", fontSize: 15 }}>Logout</button>
+            <button onClick={onBack} style={{ flex: 1, padding: "10px", fontSize: 13, border: "1px solid #ddd", borderRadius: 4, background: "transparent", color: "#555", cursor: "pointer", fontWeight: 500, position: "relative", top: 0, boxShadow: "0 2px 0 #d0d0d0", transition: "all 0.06s ease" }}
+              onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #d0d0d0"; }}
+              onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #d0d0d0"; }}>
+              ← Back
+            </button>
+            <button onClick={onLogout} style={{ flex: 1, padding: "10px", fontSize: 13, border: "1px solid #222", borderRadius: 4, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 600, position: "relative", top: 0, boxShadow: "0 2px 0 #000", transition: "all 0.06s ease" }}
+              onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #000"; }}
+              onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #000"; }}>
+              Logout
+            </button>
           </div>
         </div>
       </div>

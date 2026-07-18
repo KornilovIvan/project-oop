@@ -19,7 +19,7 @@ const userPalette = [
   { bg: "#ecf5f0", border: "#b5dbc8" },
 ];
 
-interface Props { projectId: number; userId: number; username?: string; onBack: () => void; onDashboard?: () => void; onProjects?: () => void; onProfile?: () => void; onLogout?: () => void; onMenuToggle?: () => void }
+interface Props { projectId: number; userId: number; username?: string; email?: string; onBack: () => void; onDashboard?: () => void; onLogout?: () => void; onMenuToggle?: () => void }
 
 function CreateTaskModal({
   users,
@@ -74,8 +74,10 @@ function CreateTaskModal({
         <input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} autoFocus style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }} />
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <input placeholder="Description (optional)" value={description} onChange={e => setDescription(e.target.value)} style={{ flex: 1, padding: "10px 12px", border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }} />
-          <button onClick={handleAiGenerate} disabled={aiLoading} className="keycap-btn keycap-btn-outline" style={{ whiteSpace: "nowrap", fontSize: 13 }}>
-            {aiLoading ? "..." : "Generate"}
+          <button onClick={handleAiGenerate} disabled={aiLoading} style={{ padding: "10px 14px", whiteSpace: "nowrap", fontSize: 12, border: "1px solid #ddd", borderRadius: 4, background: "transparent", color: "#555", cursor: "pointer", fontWeight: 500, opacity: aiLoading ? 0.5 : 1, position: "relative", top: 0, boxShadow: "0 2px 0 #d0d0d0", transition: "all 0.06s ease" }}
+            onMouseEnter={e => { if (!aiLoading) { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #d0d0d0"; } }}
+            onMouseLeave={e => { if (!aiLoading) { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #d0d0d0"; } }}>
+            {aiLoading ? "..." : "✨ Generate"}
           </button>
         </div>
         <select value={priority} onChange={e => setPriority(Number(e.target.value))} style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }}>
@@ -87,13 +89,15 @@ function CreateTaskModal({
           </select>
         )}
         {error && <p style={{ color: "red", fontSize: 14, marginBottom: 8 }}>{error}</p>}
-        <button onClick={handleCreate} className="keycap-btn keycap-btn-solid" style={{ width: "100%", padding: 10, fontSize: 15 }}>Create</button>
+        <button onClick={handleCreate} style={{ width: "100%", padding: 10, fontSize: 14, border: "1px solid #222", borderRadius: 4, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 600, position: "relative", top: 0, boxShadow: "0 3px 0 #000", transition: "all 0.06s ease" }}
+          onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 2px 0 #000"; }}
+          onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 3px 0 #000"; }}>Create</button>
       </div>
     </div>
   );
 }
 
-export function TasksPage({ projectId, userId, username, onBack, onDashboard, onProjects, onProfile, onLogout, onMenuToggle }: Props) {
+export function TasksPage({ projectId, userId, username, email, onBack, onDashboard, onLogout, onMenuToggle }: Props) {
   const [tasks, setTasks] = useState<TaskRes[]>([]);
   const [project, setProject] = useState<ProjectRes | null>(null);
   const [users, setUsers] = useState<UserRes[]>([]);
@@ -184,84 +188,119 @@ export function TasksPage({ projectId, userId, username, onBack, onDashboard, on
         />
       )}
 
-      <NavBar username={username} onSelectProject={onDashboard ?? undefined} onProfile={onProfile} onLogout={onLogout} onMenuToggle={onMenuToggle} style={{ paddingRight: detailTask ? 444 : 24, transition: "padding-right 0.15s ease" }} />
+      <NavBar username={username} email={email} onSelectProject={onDashboard ?? undefined} onLogout={onLogout} onMenuToggle={onMenuToggle} style={{ paddingRight: detailTask ? 444 : 24, transition: "padding-right 0.15s ease" }} />
 
       {/* Members modal */}
       {membersProject && (
-        <div onClick={() => setMembersProject(null)} className="modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div onClick={e => e.stopPropagation()} className="modal-content" style={{ background: "#fff", padding: 32, maxWidth: 500, width: "92%", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-              <h3 style={{ margin: 0 }}>Invite members</h3>
-              <button onClick={() => setMembersProject(null)} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#999" }}>x</button>
-            </div>
-            <p style={{ margin: "0 0 12px", color: "#666", fontSize: 14 }}>{membersProject.name}</p>
-
-            <input placeholder="Search by username or email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} autoFocus style={{ width: "100%", padding: "10px 12px", marginBottom: 16, border: "1px solid #ddd", fontSize: 14, boxSizing: "border-box" }} />
-
-            <div>
-              <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "#666" }}>Members</h4>
-              {users.filter(u => membersProject.memberIds.includes(u.id)).map(user => (
-                <div key={user.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #eee" }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{user.username}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 12, color: "#777" }}>
-                      {membersProject.adminIds.includes(user.id) ? "Admin" : "Executor"}
-                    </span>
-                    <button onClick={async () => {
-                      try {
-                        await projectApi.removeMember(membersProject.id, user.id);
-                        const updated = await projectApi.get(membersProject.id);
-                        setMembersProject(updated);
-                        setProject(updated);
-                        await load();
-                      } catch (err) {
-                        alert(err instanceof Error ? err.message : "Failed");
-                      }
-                    }} className="keycap-btn keycap-btn-ghost" style={{ padding: "4px 10px", fontSize: 12 }}>Remove</button>
-                  </div>
-                </div>
-              ))}
-              {users.filter(u => membersProject.memberIds.includes(u.id)).length === 0 && <p style={{ color: "#999", fontSize: 13 }}>No members yet.</p>}
+        <div onClick={() => setMembersProject(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", padding: 24, maxWidth: 440, width: "92%", borderRadius: 10, boxShadow: "0 12px 40px rgba(0,0,0,0.15)" }}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Invite members</h3>
+                <p style={{ margin: "2px 0 0", fontSize: 13, color: "#888" }}>{membersProject.name}</p>
+              </div>
+              <button onClick={() => setMembersProject(null)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#999", padding: "0 4px" }}>×</button>
             </div>
 
-            {/* Pending invitations — always visible */}
-            <div style={{ marginTop: 12 }}>
-              <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "#666" }}>Pending invitations</h4>
-              {membersProject.invitedUserIds.length > 0 ? users.filter(u => membersProject.invitedUserIds.includes(u.id)).map(user => (
-                <div key={user.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #eee" }}>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{user.username}</div>
-                    <div style={{ fontSize: 12, color: "#888" }}>{user.email}</div>
-                  </div>
-                  <span style={{ fontSize: 12, color: "#888" }}>Invited</span>
-                </div>
-              )) : <p style={{ color: "#999", fontSize: 13 }}>No pending invitations.</p>}
-            </div>
+            {/* Search */}
+            <input placeholder="Search by username or email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} autoFocus style={{ width: "100%", padding: "10px 12px", marginBottom: 16, border: "1px solid #ddd", borderRadius: 6, fontSize: 13, boxSizing: "border-box", outline: "none" }} />
 
-            {searchQuery.trim() && (
-              <div style={{ marginTop: 12 }}>
-                <h4 style={{ margin: "0 0 8px", fontSize: 13, color: "#666" }}>Search results</h4>
-                {users.filter(u => !membersProject.memberIds.includes(u.id) && !membersProject.invitedUserIds.includes(u.id) && (u.username.toLowerCase().includes(searchQuery.toLowerCase()) || u.email.toLowerCase().includes(searchQuery.toLowerCase()))).map(user => (
-                  <div key={user.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #eee" }}>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 600 }}>{user.username}</div>
-                      <div style={{ fontSize: 12, color: "#888" }}>{user.email}</div>
+            {/* Scrollable list */}
+            <div style={{ maxHeight: 320, overflowY: "auto" }}>
+              {/* Members section */}
+              <div style={{ marginBottom: 12 }}>
+                <h4 style={{ margin: "0 0 8px", fontSize: 12, color: "#999", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Members</h4>
+                {users.filter(u => membersProject.memberIds.includes(u.id)).map(user => (
+                  <div key={user.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#222", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, flexShrink: 0 }}>
+                        {user.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{user.username}</div>
+                        <div style={{ fontSize: 11, color: "#999" }}>{membersProject.adminIds.includes(user.id) ? "Admin" : "Executor"}</div>
+                      </div>
                     </div>
-                    <button onClick={async () => {
-                      try {
-                        await projectApi.inviteMember(membersProject.id, user.id);
-                        const updated = await projectApi.get(membersProject.id);
-                        setMembersProject(updated);
-                        if (project?.id === updated.id) setProject(updated);
-                      } catch (err) {
-                        alert(err instanceof Error ? err.message : "Failed");
-                      }
-                    }} className="keycap-btn keycap-btn-outline" style={{ padding: "4px 10px", fontSize: 12 }}>Invite</button>
+                    {!membersProject.adminIds.includes(user.id) && (
+                      <button onClick={async () => {
+                        try {
+                          await projectApi.removeMember(membersProject.id, user.id);
+                          const updated = await projectApi.get(membersProject.id);
+                          setMembersProject(updated);
+                          setProject(updated);
+                          await load();
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : "Failed");
+                        }
+                      }} style={{ padding: "4px 10px", fontSize: 11, border: "1px solid #ddd", borderRadius: 4, background: "transparent", color: "#999", cursor: "pointer", transition: "all 0.06s ease", position: "relative", top: 0, boxShadow: "0 2px 0 #e0e0e0" }}
+                        onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #e0e0e0"; }}
+                        onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #e0e0e0"; }}>Remove</button>
+                    )}
                   </div>
                 ))}
-                {users.filter(u => !membersProject.memberIds.includes(u.id) && !membersProject.invitedUserIds.includes(u.id) && (u.username.toLowerCase().includes(searchQuery.toLowerCase()) || u.email.toLowerCase().includes(searchQuery.toLowerCase()))).length === 0 && <p style={{ color: "#999", fontSize: 13 }}>No users found.</p>}
               </div>
-            )}
+
+              {/* Pending invitations */}
+              {membersProject.invitedUserIds.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <h4 style={{ margin: "0 0 8px", fontSize: 12, color: "#999", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Pending</h4>
+                  {users.filter(u => membersProject.invitedUserIds.includes(u.id)).map(user => (
+                    <div key={user.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#ddd", color: "#888", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, flexShrink: 0 }}>
+                          {user.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "#888" }}>{user.username}</div>
+                          <div style={{ fontSize: 11, color: "#bbb" }}>{user.email}</div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 11, color: "#bbb" }}>Invited</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Search results */}
+              {searchQuery.trim() && (
+                <div>
+                  <h4 style={{ margin: "0 0 8px", fontSize: 12, color: "#999", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Results</h4>
+                  {users.filter(u => !membersProject.memberIds.includes(u.id) && !membersProject.invitedUserIds.includes(u.id) && (u.username.toLowerCase().includes(searchQuery.toLowerCase()) || u.email.toLowerCase().includes(searchQuery.toLowerCase()))).map(user => (
+                    <div key={user.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#eee", color: "#555", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, flexShrink: 0 }}>
+                          {user.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>{user.username}</div>
+                          <div style={{ fontSize: 11, color: "#999" }}>{user.email}</div>
+                        </div>
+                      </div>
+                      <button onClick={async () => {
+                        try {
+                          await projectApi.inviteMember(membersProject.id, user.id);
+                          const updated = await projectApi.get(membersProject.id);
+                          setMembersProject(updated);
+                          if (project?.id === updated.id) setProject(updated);
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : "Failed");
+                        }
+                      }} style={{ padding: "4px 12px", fontSize: 11, border: "1px solid #222", borderRadius: 4, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 600, position: "relative", top: 0, boxShadow: "0 2px 0 #000", transition: "all 0.06s ease" }}
+                        onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #000"; }}
+                        onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #000"; }}>Invite</button>
+                    </div>
+                  ))}
+                  {users.filter(u => !membersProject.memberIds.includes(u.id) && !membersProject.invitedUserIds.includes(u.id) && (u.username.toLowerCase().includes(searchQuery.toLowerCase()) || u.email.toLowerCase().includes(searchQuery.toLowerCase()))).length === 0 && (
+                    <p style={{ color: "#ccc", fontSize: 13, textAlign: "center", padding: "16px 0" }}>No users found</p>
+                  )}
+                </div>
+              )}
+
+              {!searchQuery.trim() && membersProject.memberIds.length === 0 && membersProject.invitedUserIds.length === 0 && (
+                <p style={{ color: "#ccc", fontSize: 13, textAlign: "center", padding: "24px 0" }}>No members yet. Search to invite.</p>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -284,16 +323,26 @@ export function TasksPage({ projectId, userId, username, onBack, onDashboard, on
         </div>
       )}
 
-      {/* Back / Invite / New Task — static, slide left */}
+      {/* Back / Invite / New Task */}
       <div style={{ padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", paddingRight: detailTask ? 444 : 24 }}>
-        <button onClick={onBack} className="back-btn keycap-btn keycap-btn-ghost" style={{ padding: "6px 12px", fontSize: 14 }}>Back to Projects</button>
+        <button onClick={onBack} style={{ padding: "8px 16px", fontSize: 13, border: "1px solid #ddd", borderRadius: 4, background: "transparent", color: "#555", cursor: "pointer", fontWeight: 500, position: "relative", top: 0, boxShadow: "0 2px 0 #d0d0d0", transition: "all 0.06s ease" }}
+          onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #d0d0d0"; }}
+          onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #d0d0d0"; }}>
+          ← Back to Dashboard
+        </button>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {project?.adminIds.includes(userId) && (
-            <button onClick={() => setMembersProject(project)} className="keycap-btn keycap-btn-outline" style={{ fontSize: 13 }}>
-              Invite
+            <button onClick={() => setMembersProject(project)} style={{ padding: "8px 16px", fontSize: 13, border: "1px solid #ddd", borderRadius: 4, background: "transparent", color: "#555", cursor: "pointer", fontWeight: 500, position: "relative", top: 0, boxShadow: "0 2px 0 #d0d0d0", transition: "all 0.06s ease" }}
+              onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #d0d0d0"; }}
+              onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #d0d0d0"; }}>
+              + Invite
             </button>
           )}
-          <button onClick={() => setShowCreate(true)} className="keycap-btn keycap-btn-solid">+ New Task</button>
+          <button onClick={() => setShowCreate(true)} style={{ padding: "8px 16px", fontSize: 13, border: "1px solid #222", borderRadius: 4, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 600, position: "relative", top: 0, boxShadow: "0 2px 0 #000", transition: "all 0.06s ease" }}
+            onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #000"; }}
+            onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #000"; }}>
+            + New Task
+          </button>
         </div>
       </div>
 

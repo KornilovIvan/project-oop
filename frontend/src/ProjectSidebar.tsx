@@ -36,8 +36,8 @@ export function ProjectSidebar({ show, onClose, currentProjectId, onSelectProjec
               key="projects-backdrop"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 1, ease: [0.25, 0.1, 0.25, 1] }}
+              exit={{ opacity: 0, transition: { duration: 0 } }}
+              transition={{ duration: 0.12, ease: [0.25, 0.1, 0.25, 1] }}
               onClick={onClose}
               style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 89 }}
             />
