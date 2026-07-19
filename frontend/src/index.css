@@ -164,24 +164,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
   animation: slideLeft 0.2s ease;
 }
 
-/* Task cards */
-.keycap-card {
-  padding: 10px;
-  margin-bottom: 6px;
-  background: #fff;
-  border: 1px solid #e0e0e0;
-  cursor: pointer;
-  box-shadow: 0 2px 0 #d0d0d0, 0 1px 3px rgba(0,0,0,0.04);
-  transition: all 0.06s ease;
-  position: relative;
-  top: 0;
-  overflow: hidden;
-}
-.keycap-card:hover {
-  box-shadow: 0 1px 0 #d0d0d0;
-  top: 1px;
-}
-
 /* Modern task card */
 .task-card {
   padding: 12px;

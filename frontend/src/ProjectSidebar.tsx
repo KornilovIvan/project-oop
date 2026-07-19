@@ -55,7 +55,9 @@ export function ProjectSidebar({ show, onClose, currentProjectId, onSelectProjec
                 <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#999" }}>×</button>
               </div>
 
-              <button onClick={() => setShowNewProject(true)} className="keycap-btn keycap-btn-solid" style={{ width: "100%", fontSize: 13, padding: "8px 0", marginBottom: 16 }}>+ New Project</button>
+              <button onClick={() => setShowNewProject(true)} style={{ width: "100%", padding: "8px 0", fontSize: 13, border: "1px solid #222", borderRadius: 4, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 600, position: "relative", top: 0, boxShadow: "0 2px 0 #000", transition: "all 0.06s ease", marginBottom: 16 }}
+                onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #000"; }}
+                onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #000"; }}>+ New Project</button>
 
               <div style={{ flex: 1, overflowY: "auto" }}>
                 {projects.length === 0 ? (
@@ -143,7 +145,9 @@ export function ProjectSidebar({ show, onClose, currentProjectId, onSelectProjec
             <input placeholder="Project name" value={newName} onChange={e => setNewName(e.target.value)} autoFocus style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }} />
             <textarea placeholder="Description (optional)" value={newDesc} onChange={e => setNewDesc(e.target.value)} rows={4} style={{ width: "100%", padding: "10px 12px", marginBottom: 16, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box", resize: "vertical" }} />
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button onClick={() => setShowNewProject(false)} className="keycap-btn keycap-btn-ghost">Cancel</button>
+              <button onClick={() => setShowNewProject(false)} style={{ padding: "8px 16px", fontSize: 13, border: "1px solid #ddd", borderRadius: 4, background: "transparent", color: "#555", cursor: "pointer", fontWeight: 500, position: "relative", top: 0, boxShadow: "0 2px 0 #d0d0d0", transition: "all 0.06s ease" }}
+                onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #d0d0d0"; }}
+                onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #d0d0d0"; }}>Cancel</button>
               <button onClick={async () => {
                 if (!newName.trim()) return;
                 try {
@@ -154,7 +158,9 @@ export function ProjectSidebar({ show, onClose, currentProjectId, onSelectProjec
                   onClose();
                   onSelectProject(p.id);
                 } catch { /* ignore */ }
-              }} className="keycap-btn keycap-btn-solid">Create</button>
+              }} style={{ padding: "8px 16px", fontSize: 13, border: "1px solid #222", borderRadius: 4, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 600, position: "relative", top: 0, boxShadow: "0 2px 0 #000", transition: "all 0.06s ease" }}
+                onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #000"; }}
+                onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #000"; }}>Create</button>
             </div>
           </div>
         </div>
