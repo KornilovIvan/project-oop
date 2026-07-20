@@ -2,9 +2,17 @@ import { useState, useRef, useEffect } from "react";
 import { getApiKey, setApiKey } from "./api";
 import { NotificationBell } from "./NotificationBell";
 
+function getEmailFromToken(): string {
+  try {
+    const token = localStorage.getItem("accessToken");
+    if (!token) return "";
+    const p = JSON.parse(atob(token.split(".")[1]));
+    return p.email || "";
+  } catch { return ""; }
+}
+
 interface Props {
   username?: string;
-  email?: string;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
   onSelectProject?: (projectId: number) => void;
@@ -13,7 +21,7 @@ interface Props {
   style?: React.CSSProperties;
 }
 
-export function NavBar({ username, email, searchQuery, onSearchChange, onSelectProject, onLogout, onMenuToggle, style }: Props) {
+export function NavBar({ username, searchQuery, onSearchChange, onSelectProject, onLogout, onMenuToggle, style }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [apiKey, setKey] = useState(getApiKey());
   const [saved, setSaved] = useState(false);
@@ -96,7 +104,7 @@ export function NavBar({ username, email, searchQuery, onSearchChange, onSelectP
                     {(username || "?").charAt(0).toUpperCase()}
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 600 }}>{username || "User"}</div>
-                  {email && <div style={{ fontSize: 12, color: "#999", marginTop: 2 }}>{email}</div>}
+                  <div style={{ fontSize: 12, color: "#999", marginTop: 2 }}>{getEmailFromToken()}</div>
                 </div>
 
                 {/* Info cards */}
@@ -106,7 +114,7 @@ export function NavBar({ username, email, searchQuery, onSearchChange, onSelectP
                 </div>
                 <div style={{ marginBottom: 12, padding: "10px 12px", background: "#fafafa", border: "1px solid #eee", borderRadius: 4 }}>
                   <div style={{ fontSize: 10, color: "#999", marginBottom: 2, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Email</div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{email || "—"}</div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{getEmailFromToken() || "—"}</div>
                 </div>
 
                 {/* API Key */}

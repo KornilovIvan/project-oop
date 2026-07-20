@@ -14,54 +14,14 @@ export function setApiKey(key: string) {
   else localStorage.removeItem("apiKey");
 }
 
-export async function generateAIDescription(title: string): Promise<string> {
-  const key = getApiKey();
-  if (!key) throw new Error("API key not set. Add it in Profile.");
-
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      messages: [
-        {
-          role: "user",
-          content: `Напиши короткое описание задачи (2-3 предложения) на русском языке для: "${title}". Ответь только описанием, без лишнего текста.`,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 150,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => null);
-    throw new Error(err?.error?.message || `API error: ${res.status}`);
-  }
-
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim() || "No description generated.";
-}
-
-export async function aiGenerateSubtasks(title: string, description: string): Promise<string> {
+async function callDeepSeek(prompt: string, maxTokens = 300): Promise<string> {
   const key = getApiKey();
   if (!key) throw new Error("API key not set. Add it in Profile.");
 
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      messages: [{
-        role: "user",
-        content: `Разбей задачу на подзадачи. Название: "${title}". Описание: "${description}". Напиши список из 3-5 пунктов, каждый с новой строки, начиная с "- ". Без лишнего текста.`,
-      }],
-      temperature: 0.7,
-      max_tokens: 500,
-    }),
+    body: JSON.stringify({ model: "deepseek-chat", messages: [{ role: "user", content: prompt }], temperature: 0.7, max_tokens: maxTokens }),
   });
 
   if (!res.ok) {
@@ -70,61 +30,23 @@ export async function aiGenerateSubtasks(title: string, description: string): Pr
   }
 
   const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim() || "Error generating subtasks.";
+  return data.choices?.[0]?.message?.content?.trim() || "";
 }
 
-export async function aiImproveDescription(title: string, description: string): Promise<string> {
-  const key = getApiKey();
-  if (!key) throw new Error("API key not set. Add it in Profile.");
-
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      messages: [{
-        role: "user",
-        content: `Улучши описание задачи. Название: "${title}". Текущее описание: "${description || "(пусто)"}". Напиши улучшенное описание на русском (2-3 предложения). Только описание, без лишнего текста.`,
-      }],
-      temperature: 0.7,
-      max_tokens: 300,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => null);
-    throw new Error(err?.error?.message || `API error: ${res.status}`);
-  }
-
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim() || "Error improving description.";
+export function generateAIDescription(title: string) {
+  return callDeepSeek(`Напиши короткое описание задачи (2-3 предложения) на русском языке для: "${title}". Ответь только описанием, без лишнего текста.`, 150);
 }
 
-export async function aiRegenerateWithFeedback(title: string, description: string, feedback: string): Promise<string> {
-  const key = getApiKey();
-  if (!key) throw new Error("API key not set. Add it in Profile.");
+export function aiGenerateSubtasks(title: string, description: string) {
+  return callDeepSeek(`Разбей задачу на подзадачи. Название: "${title}". Описание: "${description}". Напиши список из 3-5 пунктов, каждый с новой строки, начиная с "- ". Без лишнего текста.`, 500);
+}
 
-  const res = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      messages: [{
-        role: "user",
-        content: `Задача: "${title}". Текущее описание: "${description || "(пусто)"}". Пользователь хочет: "${feedback}". Напиши улучшенное описание на русском (2-3 предложения). Только описание, без лишнего текста.`,
-      }],
-      temperature: 0.7,
-      max_tokens: 300,
-    }),
-  });
+export function aiImproveDescription(title: string, description: string) {
+  return callDeepSeek(`Улучши описание задачи. Название: "${title}". Текущее описание: "${description || "(пусто)"}". Напиши улучшенное описание на русском (2-3 предложения). Только описание, без лишнего текста.`);
+}
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => null);
-    throw new Error(err?.error?.message || `API error: ${res.status}`);
-  }
-
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim() || "Error.";
+export function aiRegenerateWithFeedback(title: string, description: string, feedback: string) {
+  return callDeepSeek(`Задача: "${title}". Текущее описание: "${description || "(пусто)"}". Пользователь хочет: "${feedback}". Напиши улучшенное описание на русском (2-3 предложения). Только описание, без лишнего текста.`);
 }
 
 async function req<T>(url: string, body?: unknown, method?: string): Promise<T> {

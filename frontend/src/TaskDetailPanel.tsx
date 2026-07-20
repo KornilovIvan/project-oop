@@ -8,14 +8,23 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
   const [feedback, setFeedback] = useState("");
-  const [showAi, setShowAi] = useState(false);
-  const [showSubtask, setShowSubtask] = useState(false);
+  const [activePopover, setActivePopover] = useState<"ai" | "subtask" | null>(null);
   const [subtasksLoading, setSubtasksLoading] = useState(false);
   const [subtaskItems, setSubtaskItems] = useState<{ id: number; title: string; checked: boolean }[]>([]);
   const [editTitle, setEditTitle] = useState(false);
   const [titleText, setTitleText] = useState("");
   const titleRef = useRef<HTMLHeadingElement>(null);
   const descTimer = useRef<ReturnType<typeof setTimeout>>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!activePopover) return;
+    const close = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) setActivePopover(null);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [activePopover]);
 
   useEffect(() => {
     if (editTitle && titleRef.current) {
@@ -236,66 +245,68 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
       <hr style={{ border: "none", borderTop: "1px solid #eee", margin: "4px 0" }} />
 
       {/* Actions */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button onClick={() => { setShowAi(!showAi); }} style={{ padding: "8px 14px", fontSize: 12, border: showAi ? "1px solid #222" : "1px solid #ddd", borderRadius: 8, background: showAi ? "#222" : "transparent", color: showAi ? "#fff" : "#555", cursor: "pointer", transition: "all 0.1s ease", fontWeight: 500 }}>
+      <div style={{ position: "relative", display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button onClick={() => setActivePopover(activePopover === "ai" ? null : "ai")} style={{ padding: "8px 14px", fontSize: 12, border: activePopover === "ai" ? "1px solid #222" : "1px solid #ddd", borderRadius: 4, background: activePopover === "ai" ? "#222" : "transparent", color: activePopover === "ai" ? "#fff" : "#555", cursor: "pointer", transition: "all 0.06s ease", fontWeight: 500, position: "relative", top: 0, boxShadow: activePopover === "ai" ? "0 1px 0 #000" : "0 2px 0 #d0d0d0" }}
+          onMouseEnter={e => { if (activePopover !== "ai") { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #d0d0d0"; } }}
+          onMouseLeave={e => { if (activePopover !== "ai") { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #d0d0d0"; } }}>
           ✨ AI
         </button>
-        <button onClick={() => { setShowSubtask(!showSubtask); if (!showSubtask) setSubtaskItems([]); }} style={{ padding: "8px 14px", fontSize: 12, border: showSubtask ? "1px solid #222" : "1px solid #ddd", borderRadius: 8, background: showSubtask ? "#222" : "transparent", color: showSubtask ? "#fff" : "#555", cursor: "pointer", transition: "all 0.1s ease", fontWeight: 500 }}>
+        <button onClick={() => { setActivePopover(activePopover === "subtask" ? null : "subtask"); if (activePopover !== "subtask") setSubtaskItems([]); }} style={{ padding: "8px 14px", fontSize: 12, border: activePopover === "subtask" ? "1px solid #222" : "1px solid #ddd", borderRadius: 4, background: activePopover === "subtask" ? "#222" : "transparent", color: activePopover === "subtask" ? "#fff" : "#555", cursor: "pointer", transition: "all 0.06s ease", fontWeight: 500, position: "relative", top: 0, boxShadow: activePopover === "subtask" ? "0 1px 0 #000" : "0 2px 0 #d0d0d0" }}
+          onMouseEnter={e => { if (activePopover !== "subtask") { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #d0d0d0"; } }}
+          onMouseLeave={e => { if (activePopover !== "subtask") { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #d0d0d0"; } }}>
           Subtasks
         </button>
-      </div>
 
-      {aiError && <p style={{ color: "red", fontSize: 13, margin: 0 }}>{aiError}</p>}
+        {/* Popover */}
+        {activePopover && (
+          <div ref={popoverRef} style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: 8, background: "#fff", border: "1px solid #e0e0e0", borderRadius: 6, boxShadow: "0 8px 24px rgba(0,0,0,0.1)", padding: 14, zIndex: 10 }}>
+            {aiError && <p style={{ color: "red", fontSize: 12, margin: "0 0 8px" }}>{aiError}</p>}
 
-      {/* AI panel */}
-      {showAi && (
-        <div style={{ padding: 16, background: "#f7f7f7", border: "1px solid #e0e0e0", borderRadius: 10 }}>
-          <p style={{ fontSize: 13, color: "#333", margin: "0 0 12px", lineHeight: 1.5 }}>Improve description with AI or give custom feedback.</p>
-          <button onClick={handleAIApply} disabled={aiLoading} style={{ padding: "8px 16px", fontSize: 12, border: "1px solid #222", borderRadius: 8, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 500, marginBottom: 10, width: "100%" }}>
-            {aiLoading ? "Processing..." : "Auto-improve description"}
-          </button>
-          <div style={{ display: "flex", gap: 6 }}>
-            <input
-              placeholder="Make it shorter, add details..."
-              value={feedback}
-              onChange={e => setFeedback(e.target.value)}
-              style={{ flex: 1, padding: "8px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13, boxSizing: "border-box" }}
-            />
-            <button onClick={handleAIRegenerate} disabled={aiLoading || !feedback.trim()} style={{ padding: "8px 14px", fontSize: 12, border: "1px solid #ddd", borderRadius: 8, background: "transparent", color: "#555", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500, opacity: aiLoading || !feedback.trim() ? 0.5 : 1 }}>
-              {aiLoading ? "..." : "Apply"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Subtasks */}
-      {showSubtask && (
-        <div style={{ padding: 16, background: "#f7f7f7", border: "1px solid #e0e0e0", borderRadius: 10 }}>
-          <p style={{ fontSize: 13, color: "#333", margin: "0 0 12px", lineHeight: 1.5 }}>
-            AI will split this task into 3-5 smaller subtasks. Select which ones to add.
-          </p>
-          <button onClick={handleSubtask} disabled={subtasksLoading} style={{ padding: "8px 16px", fontSize: 12, border: "1px solid #222", borderRadius: 8, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 500, width: "100%" }}>
-            {subtasksLoading ? "Generating..." : "Generate with AI"}
-          </button>
-          {subtaskItems.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              {subtaskItems.map(item => (
-                <div key={item.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #e0e0e0" }}>
-                  <input type="checkbox" checked={item.checked} onChange={() => toggleSubtask(item.id)} style={{ accentColor: "#222" }} />
-                  <input
-                    value={item.title}
-                    onChange={e => updateSubtaskTitle(item.id, e.target.value)}
-                    style={{ flex: 1, padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13, boxSizing: "border-box" }}
-                  />
+            {activePopover === "ai" && (
+              <>
+                <p style={{ fontSize: 12, color: "#555", margin: "0 0 10px", lineHeight: 1.4 }}>Improve description or give custom feedback.</p>
+                <button onClick={handleAIApply} disabled={aiLoading} style={{ width: "100%", padding: "8px 0", fontSize: 12, border: "1px solid #222", borderRadius: 4, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 600, position: "relative", top: 0, boxShadow: "0 2px 0 #000", transition: "all 0.06s ease", marginBottom: 8 }}
+                  onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #000"; }}
+                  onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #000"; }}>
+                  {aiLoading ? "Processing..." : "Auto-improve"}
+                </button>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input placeholder="Make it shorter, add details..." value={feedback} onChange={e => setFeedback(e.target.value)} style={{ flex: 1, padding: "7px 10px", border: "1px solid #ddd", borderRadius: 4, fontSize: 12, boxSizing: "border-box", outline: "none" }} />
+                  <button onClick={handleAIRegenerate} disabled={aiLoading || !feedback.trim()} style={{ padding: "7px 12px", fontSize: 12, border: "1px solid #ddd", borderRadius: 4, background: "transparent", color: "#555", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500, opacity: aiLoading || !feedback.trim() ? 0.5 : 1 }}>
+                    Apply
+                  </button>
                 </div>
-              ))}
-              <button onClick={addSelectedSubtasks} style={{ padding: "8px 16px", fontSize: 12, border: "1px solid #222", borderRadius: 8, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 500, marginTop: 10, width: "100%" }}>
-                Add selected ({subtaskItems.filter(i => i.checked).length})
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+              </>
+            )}
+
+            {activePopover === "subtask" && (
+              <>
+                <p style={{ fontSize: 12, color: "#555", margin: "0 0 10px", lineHeight: 1.4 }}>Split into smaller subtasks.</p>
+                <button onClick={handleSubtask} disabled={subtasksLoading} style={{ width: "100%", padding: "8px 0", fontSize: 12, border: "1px solid #222", borderRadius: 4, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 600, position: "relative", top: 0, boxShadow: "0 2px 0 #000", transition: "all 0.06s ease" }}
+                  onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #000"; }}
+                  onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #000"; }}>
+                  {subtasksLoading ? "Generating..." : "Generate with AI"}
+                </button>
+                {subtaskItems.length > 0 && (
+                  <div style={{ marginTop: 10 }}>
+                    {subtaskItems.map(item => (
+                      <div key={item.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 0", borderBottom: "1px solid #f0f0f0" }}>
+                        <input type="checkbox" checked={item.checked} onChange={() => toggleSubtask(item.id)} style={{ accentColor: "#222" }} />
+                        <input value={item.title} onChange={e => updateSubtaskTitle(item.id, e.target.value)} style={{ flex: 1, padding: "6px 8px", border: "1px solid #ddd", borderRadius: 4, fontSize: 12, boxSizing: "border-box", outline: "none" }} />
+                      </div>
+                    ))}
+                    <button onClick={addSelectedSubtasks} style={{ width: "100%", padding: "8px 0", fontSize: 12, border: "1px solid #222", borderRadius: 4, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 600, marginTop: 8, position: "relative", top: 0, boxShadow: "0 2px 0 #000", transition: "all 0.06s ease" }}
+                      onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #000"; }}
+                      onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #000"; }}>
+                      Add selected ({subtaskItems.filter(i => i.checked).length})
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
