@@ -7,9 +7,6 @@ export const columns = [
   { key: 4, title: "Done" },
 ];
 
-export const priorityLabels: Record<number, string> = { 1: "Low", 2: "Medium", 3: "High", 4: "Critical" };
-export const priorityColors: Record<number, string> = { 1: "#d4d4d4", 2: "#c0c0c0", 3: "#a8a8a8", 4: "#888888" };
-
 export const projectPalette = [
   { bg: "#f5ecec", border: "#dbb5b5" },
   { bg: "#ecf0f5", border: "#b5c8db" },

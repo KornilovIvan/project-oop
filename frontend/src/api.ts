@@ -34,19 +34,19 @@ async function callDeepSeek(prompt: string, maxTokens = 300): Promise<string> {
 }
 
 export function generateAIDescription(title: string) {
-  return callDeepSeek(`Напиши короткое описание задачи (2-3 предложения) на русском языке для: "${title}". Ответь только описанием, без лишнего текста.`, 150);
+  return callDeepSeek(`Write a short task description (2-3 sentences) for: "${title}". Reply with the description only, no extra text.`, 150);
 }
 
 export function aiGenerateSubtasks(title: string, description: string) {
-  return callDeepSeek(`Разбей задачу на подзадачи. Название: "${title}". Описание: "${description}". Напиши список из 3-5 пунктов, каждый с новой строки, начиная с "- ". Без лишнего текста.`, 500);
+  return callDeepSeek(`Break down the task into subtasks. Title: "${title}". Description: "${description}". List 3-5 items, each on a new line starting with "- ". No extra text.`, 500);
 }
 
 export function aiImproveDescription(title: string, description: string) {
-  return callDeepSeek(`Улучши описание задачи. Название: "${title}". Текущее описание: "${description || "(пусто)"}". Напиши улучшенное описание на русском (2-3 предложения). Только описание, без лишнего текста.`);
+  return callDeepSeek(`Improve the task description. Title: "${title}". Current description: "${description || "(empty)"}". Write an improved version (2-3 sentences). Description only.`);
 }
 
 export function aiRegenerateWithFeedback(title: string, description: string, feedback: string) {
-  return callDeepSeek(`Задача: "${title}". Текущее описание: "${description || "(пусто)"}". Пользователь хочет: "${feedback}". Напиши улучшенное описание на русском (2-3 предложения). Только описание, без лишнего текста.`);
+  return callDeepSeek(`Task: "${title}". Current description: "${description || "(empty)"}". User wants: "${feedback}". Write an improved description (2-3 sentences). Description only.`);
 }
 
 async function req<T>(url: string, body?: unknown, method?: string): Promise<T> {
@@ -87,7 +87,7 @@ export type ProjectRes = {
   adminIds: number[];
   invitedUserIds: number[];
 }
-export type TaskRes = { id: number; title: string; description: string; projectId: number; assigneeId: number; status: number; priority: number; createdById: number }
+export type TaskRes = { id: number; title: string; description: string; projectId: number; assigneeId: number; status: number; createdById: number }
 
 export type TaskWithProject = TaskRes & { projectName: string }
 
@@ -125,6 +125,8 @@ export const projectApi = {
     req<ProjectRes>(`/projects/${projectId}/members/${userId}`, {}),
   removeMember: (projectId: number, userId: number) =>
     req<void>(`/projects/${projectId}/members/${userId}`, undefined, "DELETE"),
+  update: (projectId: number, data: { name?: string; description?: string }) =>
+    req<ProjectRes>(`/projects/${projectId}`, data, "PUT"),
   delete: (projectId: number) =>
     req<void>(`/projects/${projectId}`, undefined, "DELETE"),
   inviteMember: (projectId: number, userId: number) =>
@@ -139,7 +141,7 @@ export const projectApi = {
 
 export const taskApi = {
   list: (projectId: number) => req<TaskRes[]>(`/projects/${projectId}/tasks`),
-  create: (data: { title: string; description: string; projectId: number; createdById: number; priority: number; assigneeId?: number }) =>
+  create: (data: { title: string; description: string; projectId: number; createdById: number; assigneeId?: number }) =>
     req<TaskRes>("/tasks", data),
   assign: (taskId: number, assigneeId: number) =>
     req<TaskRes>(`/tasks/${taskId}/assignee`, { assigneeId }),
@@ -151,8 +153,6 @@ export const taskApi = {
     req<TaskRes>(`/tasks/${taskId}/title`, { title }),
   updateDescription: (taskId: number, description: string) =>
     req<TaskRes>(`/tasks/${taskId}/description`, { description }),
-  updatePriority: (taskId: number, priority: number) =>
-    req<TaskRes>(`/tasks/${taskId}/priority`, { priority }),
 };
 
 export async function getAllTasks(): Promise<TaskWithProject[]> {

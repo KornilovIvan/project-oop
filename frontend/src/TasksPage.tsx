@@ -34,11 +34,10 @@ function CreateTaskModal({
   canAssign: boolean;
   currentUserId: number;
   onClose: () => void;
-  onCreate: (title: string, description: string, priority: number, assigneeId: number) => Promise<void>;
+  onCreate: (title: string, description: string, assigneeId: number) => Promise<void>;
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState(2);
   const [assigneeId, setAssigneeId] = useState(currentUserId);
   const [error, setError] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -46,7 +45,7 @@ function CreateTaskModal({
 
   const handleCreate = async () => {
     if (!title) { setError("Title is required"); return; }
-    try { setError(""); await onCreate(title, description, priority, assigneeId); onClose(); }
+    try { setError(""); await onCreate(title, description, assigneeId); onClose(); }
     catch (e: unknown) { setError(e instanceof Error ? e.message : "Failed to create task"); }
   };
 
@@ -80,9 +79,7 @@ function CreateTaskModal({
             {aiLoading ? "..." : "✨ Generate"}
           </button>
         </div>
-        <select value={priority} onChange={e => setPriority(Number(e.target.value))} style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }}>
-          <option value={1}>Low</option><option value={2}>Medium</option><option value={3}>High</option><option value={4}>Critical</option>
-        </select>
+
         {canAssign && (
           <select value={assigneeId} onChange={e => setAssigneeId(Number(e.target.value))} style={{ width: "100%", padding: "10px 12px", marginBottom: 12, border: "1px solid #ddd", fontSize: 15, boxSizing: "border-box" }}>
             {memberUsers.map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
@@ -127,19 +124,9 @@ export function TasksPage({ projectId, userId, username, onBack, onDashboard, on
     userApi.list().then(setUsers).catch(e => setStatusError(e instanceof Error ? e.message : "Failed to load users"));
   }, []);
 
-  const handleCreate = async (title: string, description: string, priority: number, assigneeId: number) => {
-    await taskApi.create({ title, description, projectId, createdById: userId, priority, assigneeId });
+  const handleCreate = async (title: string, description: string, assigneeId: number) => {
+    await taskApi.create({ title, description, projectId, createdById: userId, assigneeId });
     await load();
-  };
-
-  const assignTask = async (taskId: number, assigneeId: number) => {
-    try {
-      setStatusError("");
-      await taskApi.assign(taskId, assigneeId);
-      await load();
-    } catch (error: unknown) {
-      setStatusError(error instanceof Error ? error.message : "Failed to assign task");
-    }
   };
 
   const changeStatus = async (taskId: number, status: number) => {
@@ -397,16 +384,6 @@ export function TasksPage({ projectId, userId, username, onBack, onDashboard, on
                             <div className="avatar-circle">{userName(users, t.assigneeId).charAt(0).toUpperCase()}</div>
                             <span>{userName(users, t.assigneeId)}</span>
                           </div>
-                          {isProjectAdmin && (
-                            <select
-                              value={t.assigneeId}
-                              onClick={e => e.stopPropagation()}
-                              onChange={e => assignTask(t.id, Number(e.target.value))}
-                              style={{ width: "100%", marginTop: 8, padding: "6px 8px", border: "1px solid #ddd", fontSize: 13 }}
-                            >
-                              {users.filter(user => project?.memberIds.includes(user.id)).map(user => <option key={user.id} value={user.id}>{user.username}</option>)}
-                            </select>
-                          )}
                         </div>
                       ))}
                     </div>

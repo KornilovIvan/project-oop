@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { aiGenerateSubtasks, aiImproveDescription, taskApi } from "./api";
 import type { TaskRes, UserRes } from "./api";
-import { columns, priorityLabels } from "./taskConstants";
+import { columns } from "./taskConstants";
 
 export function TaskDetailModal({ task, users, onClose, projectId, userId, memberIds, isAdmin }: { task: TaskRes; users: UserRes[]; onClose: () => void; projectId: number; userId: number; memberIds?: number[]; isAdmin?: boolean }) {
   const [descText, setDescText] = useState(task.description || "");
@@ -11,6 +11,7 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
   const [activePopover, setActivePopover] = useState<"ai" | "subtask" | null>(null);
   const [subtasksLoading, setSubtasksLoading] = useState(false);
   const [subtaskItems, setSubtaskItems] = useState<{ id: number; title: string; checked: boolean }[]>([]);
+  const [subtaskAssigneeId, setSubtaskAssigneeId] = useState(userId);
   const [editTitle, setEditTitle] = useState(false);
   const [titleText, setTitleText] = useState("");
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -69,15 +70,6 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
     }
   };
 
-  const handlePriorityChange = async (priority: number) => {
-    try {
-      const updated = await taskApi.updatePriority(task.id, priority);
-      Object.assign(task, updated);
-    } catch (e: unknown) {
-      setAiError(e instanceof Error ? e.message : "Failed");
-    }
-  };
-
   const handleAssigneeChange = async (assigneeId: number) => {
     try {
       const updated = await taskApi.assign(task.id, assigneeId);
@@ -121,10 +113,10 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
     const selected = subtaskItems.filter(item => item.checked);
     try {
       for (const item of selected) {
-        await taskApi.create({ title: item.title, description: "", projectId, createdById: userId, priority: 2 });
+        await taskApi.create({ title: item.title, description: "", projectId, createdById: userId, assigneeId: subtaskAssigneeId });
       }
       setSubtaskItems([]);
-      setShowSubtask(false);
+      setActivePopover(null);
     } catch (e: unknown) {
       setAiError(e instanceof Error ? e.message : "Failed to create subtasks");
     }
@@ -136,7 +128,7 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
       setDescText(result);
       const updated = await taskApi.updateDescription(task.id, result);
       Object.assign(task, updated);
-      setShowAi(false);
+      setActivePopover(null);
     } catch (e: unknown) {
       setAiError(e instanceof Error ? e.message : "AI error");
     }
@@ -195,39 +187,32 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
         value={descText}
         onChange={e => handleDescChange(e.target.value)}
         placeholder="Add description..."
-        rows={4}
-        style={{ width: "100%", padding: 10, border: "1px solid #ddd", fontSize: 13, boxSizing: "border-box", resize: "vertical", fontFamily: "inherit", lineHeight: 1.5 }}
+        rows={1}
+        style={{ width: "100%", padding: 10, border: "1px solid #ddd", fontSize: 13, boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5, minHeight: 32, overflow: "hidden", fieldSizing: "content" as React.CSSProperties["fieldSizing"] }}
       />
 
-      {/* Labels separator */}
-      <hr style={{ border: "none", borderTop: "1px solid #eee", margin: "4px 0" }} />
-
       {/* Metadata */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ color: "#444", minWidth: 70, fontWeight: 500 }}>Status</span>
-          <span style={{ color: "#ccc" }}>→</span>
-          {canChangeStatus ? (
-            <select value={task.status} onChange={e => handleStatusChange(Number(e.target.value))} style={{ flex: 1, padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13, cursor: "pointer", background: "#fff" }}>
-              {columns.map(col => <option key={col.key} value={col.key}>{col.title}</option>)}
-            </select>
-          ) : (
-            <span style={{ flex: 1, padding: "6px 8px" }}>{columns.find(c => c.key === task.status)?.title || "?"}</span>
-          )}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ color: "#444", minWidth: 70, fontWeight: 500 }}>Priority</span>
-          <span style={{ color: "#ccc" }}>→</span>
-          {canChangeStatus ? (
-            <select value={task.priority} onChange={e => handlePriorityChange(Number(e.target.value))} style={{ flex: 1, padding: "6px 10px", border: "1px solid #ddd", borderRadius: 6, fontSize: 13, cursor: "pointer", background: "#fff" }}>
-              <option value={1}>Low</option>
-              <option value={2}>Medium</option>
-              <option value={3}>High</option>
-              <option value={4}>Critical</option>
-            </select>
-          ) : (
-            <span style={{ flex: 1, padding: "6px 8px" }}>{priorityLabels[task.priority] || "?"}</span>
-          )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, fontSize: 13 }}>
+        <div>
+          <div style={{ color: "#444", fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Status</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+            {columns.map((col, i) => (
+              <div key={col.key} style={{ display: "flex", alignItems: "center" }}>
+                {i > 0 && <span style={{ color: "#ddd", fontSize: 11, margin: "0 3px" }}>→</span>}
+                <span style={{
+                  padding: "4px 8px",
+                  fontSize: 11,
+                  border: `1px solid ${task.status === col.key ? "#222" : "#e0e0e0"}`,
+                  borderRadius: 4,
+                  background: task.status === col.key ? "#f5f5f5" : "transparent",
+                  color: task.status === col.key ? "#222" : "#bbb",
+                  fontWeight: task.status === col.key ? 600 : 400,
+                }}>
+                  {col.title}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <span style={{ color: "#444", minWidth: 70, fontWeight: 500 }}>Assignee</span>
@@ -282,11 +267,17 @@ export function TaskDetailModal({ task, users, onClose, projectId, userId, membe
             {activePopover === "subtask" && (
               <>
                 <p style={{ fontSize: 12, color: "#555", margin: "0 0 10px", lineHeight: 1.4 }}>Split into smaller subtasks.</p>
-                <button onClick={handleSubtask} disabled={subtasksLoading} style={{ width: "100%", padding: "8px 0", fontSize: 12, border: "1px solid #222", borderRadius: 4, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 600, position: "relative", top: 0, boxShadow: "0 2px 0 #000", transition: "all 0.06s ease" }}
+                <button onClick={handleSubtask} disabled={subtasksLoading} style={{ width: "100%", padding: "8px 0", fontSize: 12, border: "1px solid #222", borderRadius: 4, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 600, position: "relative", top: 0, boxShadow: "0 2px 0 #000", transition: "all 0.06s ease", marginBottom: 8 }}
                   onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #000"; }}
                   onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #000"; }}>
                   {subtasksLoading ? "Generating..." : "Generate with AI"}
                 </button>
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>Assignee for subtasks</div>
+                  <select value={subtaskAssigneeId} onChange={e => setSubtaskAssigneeId(Number(e.target.value))} style={{ width: "100%", padding: "6px 8px", border: "1px solid #ddd", borderRadius: 4, fontSize: 12, boxSizing: "border-box", background: "#fff" }}>
+                    {users.filter(u => !memberIds || memberIds.includes(u.id)).map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
+                  </select>
+                </div>
                 {subtaskItems.length > 0 && (
                   <div style={{ marginTop: 10 }}>
                     {subtaskItems.map(item => (

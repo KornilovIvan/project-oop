@@ -18,6 +18,17 @@ export function ProjectSidebar({ show, onClose, currentProjectId, onSelectProjec
   const [showNewProject, setShowNewProject] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; project: ProjectRes } | null>(null);
+  const [editingProjectId, setEditingProjectId] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<ProjectRes | null>(null);
+
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const close = () => setCtxMenu(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [ctxMenu]);
 
   useEffect(() => {
     if (show) {
@@ -72,18 +83,38 @@ export function ProjectSidebar({ show, onClose, currentProjectId, onSelectProjec
                       <div
                         key={p.id}
                         onClick={() => { onClose(); onSelectProject(p.id); }}
+                        onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, project: p }); }}
                         style={{
                           padding: "12px",
                           borderBottom: "1px solid #f0f0f0",
                           cursor: "pointer",
                           borderLeft: isActive ? "3px solid #222" : "3px solid transparent",
                           paddingLeft: isActive ? 9 : 12,
+                          userSelect: "none",
                         }}
                         onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "#fafafa"; }}
                         onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{p.name}</div>
+                          {editingProjectId === p.id ? (
+                            <input value={editValue} onChange={e => setEditValue(e.target.value)}
+                              autoFocus
+                              onClick={e => e.stopPropagation()}
+                              onBlur={async () => {
+                                if (editValue.trim() && editValue !== p.name) {
+                                  try { const updated = await projectApi.update(p.id, { name: editValue }); setProjects(prev => prev.map(pr => pr.id === updated.id ? updated : pr)); } catch {}
+                                }
+                                setEditingProjectId(null);
+                              }}
+                              onKeyDown={async e => {
+                                if (e.key === "Enter") { e.currentTarget.blur(); }
+                                if (e.key === "Escape") { setEditingProjectId(null); }
+                              }}
+                              style={{ width: "100%", padding: "4px 6px", fontSize: 14, fontWeight: 600, border: "1px solid #222", borderRadius: 4, outline: "none", boxSizing: "border-box" }}
+                            />
+                          ) : (
+                            <div style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{p.name}</div>
+                          )}
                           <div onClick={e => { e.stopPropagation(); setViewMembers(p); }} style={{ display: "flex", alignItems: "center", gap: 2, cursor: "pointer", flexShrink: 0 }}>
                             {displayMembers.map((u, i) => (
                               <div key={u.id} style={{ width: 22, height: 22, borderRadius: "50%", background: i === 0 ? "#222" : i === 1 ? "#555" : "#888", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: "bold", marginLeft: i > 0 ? -7 : 0, border: "1px solid #fff" }}>
@@ -161,6 +192,42 @@ export function ProjectSidebar({ show, onClose, currentProjectId, onSelectProjec
               }} style={{ padding: "8px 16px", fontSize: 13, border: "1px solid #222", borderRadius: 4, background: "#222", color: "#fff", cursor: "pointer", fontWeight: 600, position: "relative", top: 0, boxShadow: "0 2px 0 #000", transition: "all 0.06s ease" }}
                 onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #000"; }}
                 onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #000"; }}>Create</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Context menu */}
+      {ctxMenu && (
+        <div style={{ position: "fixed", left: ctxMenu.x, top: ctxMenu.y, zIndex: 2000, background: "#fff", border: "1px solid #e0e0e0", borderRadius: 4, boxShadow: "0 4px 16px rgba(0,0,0,0.08)", minWidth: 140, padding: 4 }}>
+          <button onClick={() => { setEditingProjectId(ctxMenu.project.id); setEditValue(ctxMenu.project.name); setCtxMenu(null); }} style={{ width: "100%", padding: "8px 12px", fontSize: 13, border: "none", background: "none", cursor: "pointer", textAlign: "left", borderRadius: 4, color: "#333" }}
+            onMouseEnter={e => e.currentTarget.style.background = "#f5f5f5"}
+            onMouseLeave={e => e.currentTarget.style.background = "none"}>Rename</button>
+          <button onClick={() => { setDeleteConfirm(ctxMenu.project); setCtxMenu(null); }} style={{ width: "100%", padding: "8px 12px", fontSize: 13, border: "none", background: "none", cursor: "pointer", textAlign: "left", borderRadius: 4, color: "#c00" }}
+            onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
+            onMouseLeave={e => e.currentTarget.style.background = "none"}>Delete</button>
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      {deleteConfirm && (
+        <div onClick={() => setDeleteConfirm(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", padding: 24, maxWidth: 360, width: "90%", borderRadius: 8, boxShadow: "0 12px 40px rgba(0,0,0,0.15)" }}>
+            <h3 style={{ margin: "0 0 8px", fontSize: 16 }}>Delete project?</h3>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: "#888", lineHeight: 1.4 }}>This will permanently delete <strong>{deleteConfirm.name}</strong> and all its tasks.</p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setDeleteConfirm(null)} style={{ padding: "8px 16px", fontSize: 13, border: "1px solid #ddd", borderRadius: 4, background: "transparent", color: "#555", cursor: "pointer", fontWeight: 500, position: "relative", top: 0, boxShadow: "0 2px 0 #d0d0d0", transition: "all 0.06s ease" }}
+                onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #d0d0d0"; }}
+                onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #d0d0d0"; }}>Cancel</button>
+              <button onClick={async () => {
+                try {
+                  await projectApi.delete(deleteConfirm.id);
+                  setProjects(prev => prev.filter(p => p.id !== deleteConfirm.id));
+                  setDeleteConfirm(null);
+                } catch { /* ignore */ }
+              }} style={{ padding: "8px 16px", fontSize: 13, border: "1px solid #c00", borderRadius: 4, background: "#c00", color: "#fff", cursor: "pointer", fontWeight: 600, position: "relative", top: 0, boxShadow: "0 2px 0 #a00", transition: "all 0.06s ease" }}
+                onMouseEnter={e => { e.currentTarget.style.top = "1px"; e.currentTarget.style.boxShadow = "0 1px 0 #a00"; }}
+                onMouseLeave={e => { e.currentTarget.style.top = "0"; e.currentTarget.style.boxShadow = "0 2px 0 #a00"; }}>Delete</button>
             </div>
           </div>
         </div>
